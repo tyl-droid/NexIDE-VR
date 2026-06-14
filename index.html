@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>NexIDE VR Omega</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<h1>NexIDE VR Omega</h1>
+
+<div class="toolbar">
+    <button onclick="newProject()">New Project</button>
+    <button onclick="newFile()">+ File</button>
+    <button onclick="newFolder()">+ Folder</button>
+    <button onclick="renameItem()">Rename</button>
+    <button onclick="deleteItem()">Delete</button>
+    <button onclick="duplicateFile()">Duplicate</button>
+    <button onclick="runPreview()">Run</button>
+    <button onclick="autoRunToggle()">Auto Run</button>
+    <button onclick="searchText()">Search</button>
+    <button onclick="replaceText()">Replace</button>
+    <button onclick="askNexAI()">NexAI</button>
+    <button onclick="toggleQuestMode()">Quest Mode</button>
+    <button onclick="toggleTheme()">Theme</button>
+    <button onclick="exportProject()">Export</button>
+    <button onclick="clearConsole()">Clear Console</button>
+</div>
+
+<div class="workspace">
+
+    <aside class="sidebar">
+        <h2>Projects</h2>
+        <select id="projectSelect" onchange="switchProject(this.value)"></select>
+
+        <h2>Explorer</h2>
+        <div id="fileTree"></div>
+
+        <h2>Marketplace</h2>
+        <button onclick="installTemplate('portfolio')">Portfolio</button>
+        <button onclick="installTemplate('dashboard')">Dashboard</button>
+        <button onclick="installTemplate('todo')">Todo App</button>
+        <button onclick="installTemplate('chat')">Chat App</button>
+        <button onclick="installTemplate('store')">Storefront</button>
+        <button onclick="installTemplate('gameui')">Game UI</button>
+    </aside>
+
+    <main class="main">
+        <div id="tabs"></div>
+
+        <h2 id="currentFile">index.html</h2>
+        <textarea id="editor"></textarea>
+
+        <div class="previewBar">
+            <h2>Live Preview</h2>
+            <button onclick="setPreviewMode('desktop')">Desktop</button>
+            <button onclick="setPreviewMode('mobile')">Mobile</button>
+            <button onclick="setPreviewMode('quest')">Quest</button>
+            <button onclick="fullscreenPreview()">Fullscreen</button>
+        </div>
+
+        <iframe id="preview"></iframe>
+
+        <h2>Console</h2>
+        <div id="consoleBox">[SYSTEM] NexIDE console ready...</div>
+    </main>
+
+    <aside class="devtools">
+        <h2>Dev Tools</h2>
+        <button onclick="inspectDOM()">DOM Tree</button>
+        <button onclick="inspectCSS()">CSS Inspector</button>
+        <button onclick="storageViewer()">Storage</button>
+        <button onclick="performanceStats()">Performance</button>
+        <button onclick="networkInfo()">Network</button>
+        <button onclick="errorViewer()">Errors</button>
+
+        <div id="devOutput">Dev tools ready.</div>
+    </aside>
+
+</div>
+
+<div class="statusbar">
+    <span id="statusProject">Project: Default</span>
+    <span id="statusFile">File: index.html</span>
+    <span id="statusLines">Lines: 0</span>
+    <span id="statusChars">Characters: 0</span>
+    <span id="statusMode">Mode: Desktop</span>
+    <span id="statusSaved">Ready</span>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
