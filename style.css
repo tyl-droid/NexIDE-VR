@@ -282,6 +282,31 @@ body.quest #overlay {
     font-size: 18px;
 }
 
+body.quest .workspace {
+    grid-template-columns: 280px 1fr;
+}
+
+body.quest .devtools {
+    grid-column: span 2;
+}
+
+body.quest .toolbar {
+    position: sticky;
+    top: 0;
+    background: #050512;
+    z-index: 100;
+    padding: 10px;
+    border-bottom: 1px solid #333355;
+}
+
+body.quest iframe {
+    height: 720px;
+}
+
+body.quest #consoleBox {
+    min-height: 260px;
+}
+
 @media (max-width: 1000px) {
     .workspace {
         display: flex;

@@ -1,0 +1,12 @@
+{
+  "name": "NexIDE VR",
+  "short_name": "NexIDE",
+  "description": "A Quest-friendly browser IDE for building web projects in VR.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#050512",
+  "theme_color": "#22f0d0",
+  "orientation": "any",
+  "icons": []
+}

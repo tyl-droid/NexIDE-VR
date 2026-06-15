@@ -686,6 +686,33 @@ function exportProject() {
     notify("Export saved to export.json");
 }
 
+function importProject() {
+    const data = prompt("Paste exported NexIDE JSON:");
+
+    if (!data) return;
+
+    try {
+        const imported = JSON.parse(data);
+
+        if (!imported.files) {
+            notify("Invalid project format", "error");
+            return;
+        }
+
+        projects[imported.project || "Imported Project"] = imported.files;
+        currentProject = imported.project || "Imported Project";
+        currentFile = "index.html";
+
+        saveAll();
+        refreshUI();
+        runPreview();
+
+        notify("Project imported");
+    } catch {
+        notify("Import failed", "error");
+    }
+}
+
 editor.addEventListener("input", () => {
     saveCurrentFile();
     updateStatus("Auto Saved");
@@ -694,6 +721,12 @@ editor.addEventListener("input", () => {
         runPreview();
     }
 });
+
+if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("./service-worker.js")
+        .then(() => notify("Offline mode ready"))
+        .catch(() => notify("Service worker failed", "warn"));
+}
 
 loadAll();
 loadTheme();
