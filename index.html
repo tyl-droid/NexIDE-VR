@@ -2,24 +2,26 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>NexIDE VR Sigma</title>
+    <title>NexIDE VR VS</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#22f0d0">
 
     <link rel="stylesheet" href="style.css">
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.49.0/min/vs/loader.min.js"></script>
 </head>
 <body>
 
 <div id="overlay">
-    <div id="overlayTitle">NexIDE VR Sigma</div>
+    <div id="overlayTitle">NexIDE VR VS</div>
     <div id="overlayStatus">Ready</div>
 </div>
 
 <div id="notifications"></div>
 
-<h1>NexIDE VR Sigma</h1>
+<h1>NexIDE VR VS</h1>
 
 <div class="toolbar">
     <button onclick="newProject()">New Project</button>
@@ -28,7 +30,7 @@
     <button onclick="renameItem()">Rename</button>
     <button onclick="deleteItem()">Delete</button>
     <button onclick="duplicateFile()">Duplicate</button>
-    <button onclick="runPreview()">Run</button>
+    <button onclick="runProject()">Run</button>
     <button onclick="autoRunToggle()">Auto Run</button>
     <button onclick="searchText()">Search</button>
     <button onclick="replaceText()">Replace</button>
@@ -50,24 +52,42 @@
         <h2>Explorer</h2>
         <div id="fileTree"></div>
 
+        <h2>Language</h2>
+        <select id="languageSelect" onchange="changeLanguage(this.value)">
+            <option value="auto">Auto Detect</option>
+            <option value="html">HTML</option>
+            <option value="css">CSS</option>
+            <option value="javascript">JavaScript</option>
+            <option value="json">JSON</option>
+            <option value="markdown">Markdown</option>
+            <option value="plaintext">Plain Text</option>
+            <option value="python">Python Preview</option>
+            <option value="java">Java Preview</option>
+            <option value="csharp">C# Preview</option>
+            <option value="cpp">C++ Preview</option>
+        </select>
+
+        <h2>Extensions</h2>
+        <div id="extensionsPanel"></div>
+
         <h2>Templates</h2>
         <button onclick="installTemplate('portfolio')">Portfolio</button>
         <button onclick="installTemplate('dashboard')">Dashboard</button>
         <button onclick="installTemplate('todo')">Todo App</button>
-        <button onclick="installTemplate('blog')">Blog</button>
-        <button onclick="installTemplate('store')">Store</button>
-        <button onclick="installTemplate('gameui')">Game UI</button>
-        <button onclick="installTemplate('discord')">Discord Panel</button>
+        <button onclick="installTemplate('markdown')">Markdown Doc</button>
+        <button onclick="installTemplate('json')">JSON Config</button>
+        <button onclick="installTemplate('python')">Python File</button>
     </aside>
 
     <main class="main">
         <div id="tabs"></div>
 
         <h2 id="currentFile">index.html</h2>
-        <textarea id="editor"></textarea>
+
+        <div id="editor"></div>
 
         <div class="previewBar">
-            <h2>Live Preview</h2>
+            <h2>Output / Preview</h2>
             <button onclick="setPreviewMode('desktop')">Desktop</button>
             <button onclick="setPreviewMode('mobile')">Mobile</button>
             <button onclick="setPreviewMode('quest')">Quest</button>
@@ -90,6 +110,7 @@
         <button onclick="errorViewer()">Errors</button>
         <button onclick="assetManager()">Assets</button>
         <button onclick="githubPanel()">GitHub</button>
+        <button onclick="extensionInfo()">Extensions</button>
 
         <div id="devOutput">Dev tools ready.</div>
     </aside>
@@ -99,6 +120,7 @@
 <div class="statusbar">
     <span id="statusProject">Project: Default</span>
     <span id="statusFile">File: index.html</span>
+    <span id="statusLanguage">Language: auto</span>
     <span id="statusLines">Lines: 0</span>
     <span id="statusChars">Characters: 0</span>
     <span id="statusMode">Mode: Desktop</span>

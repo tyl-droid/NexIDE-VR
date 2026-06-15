@@ -43,7 +43,7 @@ button:active {
 
 .workspace {
     display: grid;
-    grid-template-columns: 250px 1fr 300px;
+    grid-template-columns: 260px 1fr 310px;
     gap: 20px;
 }
 
@@ -55,18 +55,21 @@ button:active {
     border-radius: 10px;
 }
 
-#projectSelect {
+#projectSelect,
+#languageSelect {
     width: 100%;
     margin-bottom: 15px;
 }
 
-#fileTree {
+#fileTree,
+#extensionsPanel {
     display: flex;
     flex-direction: column;
     gap: 8px;
 }
 
-.tree-item {
+.tree-item,
+.extension-card {
     padding: 10px;
     background: #181830;
     border-radius: 8px;
@@ -79,7 +82,8 @@ button:active {
     color: #ffd66b;
 }
 
-.tree-item.active {
+.tree-item.active,
+.extension-card.active {
     background: #22f0d0;
     color: black;
     font-weight: bold;
@@ -111,17 +115,12 @@ button:active {
     min-width: 0;
 }
 
-textarea {
+#editor {
     width: 100%;
-    min-height: 340px;
-    background: #02020f;
-    color: #22f0d0;
+    height: 520px;
     border: 1px solid #333355;
-    padding: 12px;
-    font-size: 16px;
-    font-family: monospace;
-    box-sizing: border-box;
-    resize: vertical;
+    border-radius: 10px;
+    overflow: hidden;
 }
 
 .previewBar {
@@ -147,7 +146,7 @@ iframe.mobile {
 
 iframe.quest {
     width: 100%;
-    height: 600px;
+    height: 650px;
 }
 
 #consoleBox,
@@ -246,7 +245,6 @@ iframe.quest {
     }
 }
 
-body.light textarea,
 body.light #consoleBox,
 body.light #devOutput,
 body.light .sidebar,
@@ -258,7 +256,8 @@ body.light .devtools {
 body.light button,
 body.light select,
 body.light .tree-item,
-body.light .tab {
+body.light .tab,
+body.light .extension-card {
     background: #ddd;
     color: #111;
 }
@@ -273,9 +272,8 @@ body.quest button {
     padding: 16px 20px;
 }
 
-body.quest textarea {
-    min-height: 520px;
-    font-size: 19px;
+body.quest #editor {
+    height: 720px;
 }
 
 body.quest #overlay {
@@ -283,7 +281,7 @@ body.quest #overlay {
 }
 
 body.quest .workspace {
-    grid-template-columns: 280px 1fr;
+    grid-template-columns: 300px 1fr;
 }
 
 body.quest .devtools {
@@ -300,11 +298,11 @@ body.quest .toolbar {
 }
 
 body.quest iframe {
-    height: 720px;
+    height: 760px;
 }
 
 body.quest #consoleBox {
-    min-height: 260px;
+    min-height: 280px;
 }
 
 @media (max-width: 1000px) {
@@ -317,9 +315,8 @@ body.quest #consoleBox {
         font-size: 34px;
     }
 
-    textarea {
-        min-height: 360px;
-        font-size: 16px;
+    #editor {
+        height: 520px;
     }
 
     iframe {
