@@ -2,13 +2,20 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>NexIDE VR Omega</title>
+    <title>NexIDE VR Sigma</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<h1>NexIDE VR Omega</h1>
+<div id="overlay">
+    <div id="overlayTitle">NexIDE VR Sigma</div>
+    <div id="overlayStatus">Ready</div>
+</div>
+
+<div id="notifications"></div>
+
+<h1>NexIDE VR Sigma</h1>
 
 <div class="toolbar">
     <button onclick="newProject()">New Project</button>
@@ -21,8 +28,9 @@
     <button onclick="autoRunToggle()">Auto Run</button>
     <button onclick="searchText()">Search</button>
     <button onclick="replaceText()">Replace</button>
-    <button onclick="askNexAI()">NexAI</button>
-    <button onclick="toggleQuestMode()">Quest Mode</button>
+    <button onclick="askNexAI()">AI Builder</button>
+    <button onclick="toggleQuestMode()">VR Mode</button>
+    <button onclick="toggleOverlay()">Overlay</button>
     <button onclick="toggleTheme()">Theme</button>
     <button onclick="exportProject()">Export</button>
     <button onclick="clearConsole()">Clear Console</button>
@@ -37,13 +45,14 @@
         <h2>Explorer</h2>
         <div id="fileTree"></div>
 
-        <h2>Marketplace</h2>
+        <h2>Templates</h2>
         <button onclick="installTemplate('portfolio')">Portfolio</button>
         <button onclick="installTemplate('dashboard')">Dashboard</button>
         <button onclick="installTemplate('todo')">Todo App</button>
-        <button onclick="installTemplate('chat')">Chat App</button>
-        <button onclick="installTemplate('store')">Storefront</button>
+        <button onclick="installTemplate('blog')">Blog</button>
+        <button onclick="installTemplate('store')">Store</button>
         <button onclick="installTemplate('gameui')">Game UI</button>
+        <button onclick="installTemplate('discord')">Discord Panel</button>
     </aside>
 
     <main class="main">
@@ -63,7 +72,7 @@
         <iframe id="preview"></iframe>
 
         <h2>Console</h2>
-        <div id="consoleBox">[SYSTEM] NexIDE console ready...</div>
+        <div id="consoleBox">[SYSTEM] Console ready...</div>
     </main>
 
     <aside class="devtools">
@@ -74,6 +83,8 @@
         <button onclick="performanceStats()">Performance</button>
         <button onclick="networkInfo()">Network</button>
         <button onclick="errorViewer()">Errors</button>
+        <button onclick="assetManager()">Assets</button>
+        <button onclick="githubPanel()">GitHub</button>
 
         <div id="devOutput">Dev tools ready.</div>
     </aside>

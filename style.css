@@ -181,6 +181,71 @@ iframe.quest {
     white-space: nowrap;
 }
 
+#overlay {
+    position: fixed;
+    top: 15px;
+    right: 15px;
+    background: rgba(5, 5, 18, 0.88);
+    border: 1px solid #22f0d0;
+    color: #22f0d0;
+    padding: 12px 16px;
+    border-radius: 12px;
+    z-index: 999;
+    font-family: monospace;
+    box-shadow: 0 0 20px rgba(34, 240, 208, 0.35);
+}
+
+#overlay.hidden {
+    display: none;
+}
+
+#overlayTitle {
+    font-weight: bold;
+    margin-bottom: 4px;
+}
+
+#notifications {
+    position: fixed;
+    top: 90px;
+    right: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 1000;
+}
+
+.notification {
+    background: #111122;
+    color: white;
+    border-left: 4px solid #22f0d0;
+    padding: 12px;
+    border-radius: 8px;
+    min-width: 220px;
+    max-width: 340px;
+    animation: slideIn 0.25s ease-out;
+    box-shadow: 0 0 15px rgba(0,0,0,0.4);
+}
+
+.notification.error {
+    border-left-color: #ff4d6d;
+}
+
+.notification.warn {
+    border-left-color: #ffd66b;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(40px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
 body.light textarea,
 body.light #consoleBox,
 body.light #devOutput,
@@ -211,6 +276,10 @@ body.quest button {
 body.quest textarea {
     min-height: 520px;
     font-size: 19px;
+}
+
+body.quest #overlay {
+    font-size: 18px;
 }
 
 @media (max-width: 1000px) {
