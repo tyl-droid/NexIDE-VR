@@ -1,329 +1,188 @@
-body {
-    background: #050512;
-    color: white;
-    font-family: Arial, sans-serif;
-    margin: 0;
-    padding: 20px;
-    padding-bottom: 90px;
-}
+/* =========================
+   OMEGA+ MODALS
+========================= */
 
-body.light {
-    background: #eeeeee;
-    color: #111;
-}
-
-body.quest {
-    font-size: 18px;
-}
-
-h1 {
-    font-size: 42px;
-}
-
-.toolbar {
-    margin-bottom: 20px;
+.modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
     display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-}
-
-button,
-select {
-    padding: 12px 16px;
-    background: #181830;
-    color: white;
-    border: 1px solid #555577;
-    border-radius: 8px;
-    font-size: 15px;
-}
-
-button:active {
-    transform: scale(0.97);
-}
-
-.workspace {
-    display: grid;
-    grid-template-columns: 260px 1fr 310px;
-    gap: 20px;
-}
-
-.sidebar,
-.devtools {
-    background: #080812;
-    border: 1px solid #333355;
-    padding: 12px;
-    border-radius: 10px;
-}
-
-#projectSelect,
-#languageSelect {
-    width: 100%;
-    margin-bottom: 15px;
-}
-
-#fileTree,
-#extensionsPanel {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.tree-item,
-.extension-card {
-    padding: 10px;
-    background: #181830;
-    border-radius: 8px;
-    cursor: pointer;
-    border: 1px solid #333355;
-    overflow-wrap: anywhere;
-}
-
-.tree-item.folder {
-    color: #ffd66b;
-}
-
-.tree-item.active,
-.extension-card.active {
-    background: #22f0d0;
-    color: black;
-    font-weight: bold;
-}
-
-#tabs {
-    display: flex;
-    gap: 8px;
-    overflow-x: auto;
-    margin-bottom: 10px;
-}
-
-.tab {
-    padding: 10px 14px;
-    background: #181830;
-    border: 1px solid #333355;
-    border-radius: 8px;
-    white-space: nowrap;
-    cursor: pointer;
-}
-
-.tab.active {
-    background: #22f0d0;
-    color: black;
-    font-weight: bold;
-}
-
-.main {
-    min-width: 0;
-}
-
-#editor {
-    width: 100%;
-    height: 520px;
-    border: 1px solid #333355;
-    border-radius: 10px;
-    overflow: hidden;
-}
-
-.previewBar {
-    display: flex;
-    gap: 8px;
+    justify-content: center;
     align-items: center;
-    flex-wrap: wrap;
+    z-index: 5000;
 }
 
-iframe {
-    width: 100%;
-    height: 380px;
-    background: white;
-    border: 1px solid #555577;
-    margin-top: 10px;
-}
-
-iframe.mobile {
-    width: 390px;
-    max-width: 100%;
-    height: 640px;
-}
-
-iframe.quest {
-    width: 100%;
-    height: 650px;
-}
-
-#consoleBox,
-#devOutput {
-    background: #02020f;
-    color: #22f0d0;
-    border: 1px solid #333355;
-    padding: 12px;
-    min-height: 160px;
-    max-height: 280px;
-    overflow-y: auto;
-    font-family: monospace;
-    white-space: pre-wrap;
-}
-
-.statusbar {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background: #111122;
-    padding: 10px;
-    display: flex;
-    gap: 20px;
-    font-size: 14px;
-    border-top: 1px solid #333355;
-    overflow-x: auto;
-}
-
-.statusbar span {
-    white-space: nowrap;
-}
-
-#overlay {
-    position: fixed;
-    top: 15px;
-    right: 15px;
-    background: rgba(5, 5, 18, 0.88);
-    border: 1px solid #22f0d0;
-    color: #22f0d0;
-    padding: 12px 16px;
-    border-radius: 12px;
-    z-index: 999;
-    font-family: monospace;
-    box-shadow: 0 0 20px rgba(34, 240, 208, 0.35);
-}
-
-#overlay.hidden {
+.modal.hidden {
     display: none;
 }
 
-#overlayTitle {
-    font-weight: bold;
-    margin-bottom: 4px;
+.modalBox {
+    width: min(90vw, 700px);
+    background: #0b0b18;
+    border: 1px solid #22f0d0;
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
 }
 
-#notifications {
-    position: fixed;
-    top: 90px;
-    right: 15px;
+.modalBox input,
+.modalBox select {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* =========================
+   TERMINAL
+========================= */
+
+#terminalBox {
+    margin-top: 15px;
+    border: 1px solid #333355;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #010109;
+}
+
+#terminalOutput {
+    min-height: 180px;
+    max-height: 300px;
+    overflow-y: auto;
+    padding: 12px;
+    font-family: monospace;
+    color: #22f0d0;
+    white-space: pre-wrap;
+}
+
+#terminalInput {
+    width: 100%;
+    padding: 12px;
+    border: none;
+    outline: none;
+    background: #111122;
+    color: white;
+    font-family: monospace;
+    box-sizing: border-box;
+}
+
+/* =========================
+   ASSET PANEL
+========================= */
+
+#assetList {
     display: flex;
     flex-direction: column;
     gap: 8px;
-    z-index: 1000;
 }
 
-.notification {
-    background: #111122;
-    color: white;
+.asset-item {
+    padding: 10px;
+    background: #181830;
+    border: 1px solid #333355;
+    border-radius: 8px;
+    overflow-wrap: anywhere;
+}
+
+.asset-item.image {
     border-left: 4px solid #22f0d0;
+}
+
+.asset-item.audio {
+    border-left: 4px solid #ffd66b;
+}
+
+.asset-item.video {
+    border-left: 4px solid #ff4d6d;
+}
+
+/* =========================
+   COMMAND PALETTE
+========================= */
+
+#commandInput {
     padding: 12px;
     border-radius: 8px;
-    min-width: 220px;
-    max-width: 340px;
-    animation: slideIn 0.25s ease-out;
-    box-shadow: 0 0 15px rgba(0,0,0,0.4);
+    border: 1px solid #333355;
+    background: #111122;
+    color: white;
 }
 
-.notification.error {
-    border-left-color: #ff4d6d;
+#commandList {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 300px;
+    overflow-y: auto;
 }
 
-.notification.warn {
-    border-left-color: #ffd66b;
-}
-
-@keyframes slideIn {
-    from {
-        opacity: 0;
-        transform: translateX(40px);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateX(0);
-    }
-}
-
-body.light #consoleBox,
-body.light #devOutput,
-body.light .sidebar,
-body.light .devtools {
-    background: white;
-    color: #111;
-}
-
-body.light button,
-body.light select,
-body.light .tree-item,
-body.light .tab,
-body.light .extension-card {
-    background: #ddd;
-    color: #111;
-}
-
-body.light .statusbar {
-    background: #ddd;
-    color: #111;
-}
-
-body.quest button {
-    font-size: 18px;
-    padding: 16px 20px;
-}
-
-body.quest #editor {
-    height: 720px;
-}
-
-body.quest #overlay {
-    font-size: 18px;
-}
-
-body.quest .workspace {
-    grid-template-columns: 300px 1fr;
-}
-
-body.quest .devtools {
-    grid-column: span 2;
-}
-
-body.quest .toolbar {
-    position: sticky;
-    top: 0;
-    background: #050512;
-    z-index: 100;
+.command-item {
     padding: 10px;
-    border-bottom: 1px solid #333355;
+    background: #181830;
+    border-radius: 8px;
+    cursor: pointer;
 }
 
-body.quest iframe {
-    height: 760px;
+.command-item:hover {
+    background: #22f0d0;
+    color: black;
 }
 
-body.quest #consoleBox {
-    min-height: 280px;
+/* =========================
+   THEME PACKS
+========================= */
+
+body.matrix {
+    background: black;
+    color: #00ff55;
 }
 
-@media (max-width: 1000px) {
-    .workspace {
-        display: flex;
-        flex-direction: column;
-    }
+body.matrix .sidebar,
+body.matrix .devtools,
+body.matrix .tab,
+body.matrix .tree-item,
+body.matrix .extension-card {
+    background: #001100;
+    color: #00ff55;
+}
 
-    h1 {
-        font-size: 34px;
-    }
+body.cyber {
+    background: #090014;
+    color: #00d9ff;
+}
 
-    #editor {
-        height: 520px;
-    }
+body.cyber .sidebar,
+body.cyber .devtools,
+body.cyber .tab,
+body.cyber .tree-item,
+body.cyber .extension-card {
+    background: #150024;
+    color: #00d9ff;
+}
 
-    iframe {
-        height: 420px;
-    }
+/* =========================
+   QUEST ULTRA MODE
+========================= */
 
-    .statusbar {
-        font-size: 13px;
-    }
+body.quest .modalBox {
+    width: 95vw;
+}
+
+body.quest #terminalOutput {
+    min-height: 260px;
+}
+
+body.quest #terminalInput {
+    font-size: 18px;
+    padding: 16px;
+}
+
+body.quest .command-item {
+    padding: 16px;
+    font-size: 18px;
+}
+
+body.quest .asset-item {
+    padding: 16px;
+    font-size: 18px;
 }

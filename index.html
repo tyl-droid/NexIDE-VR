@@ -2,12 +2,11 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>NexIDE VR VS</title>
+    <title>NexIDE VR Omega+</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#22f0d0">
-
     <link rel="stylesheet" href="style.css">
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.49.0/min/vs/loader.min.js"></script>
@@ -15,15 +14,16 @@
 <body>
 
 <div id="overlay">
-    <div id="overlayTitle">NexIDE VR VS</div>
+    <div id="overlayTitle">NexIDE VR Omega+</div>
     <div id="overlayStatus">Ready</div>
 </div>
 
 <div id="notifications"></div>
 
-<h1>NexIDE VR VS</h1>
+<h1>NexIDE VR Omega+</h1>
 
 <div class="toolbar">
+    <button onclick="openCommandPalette()">Commands</button>
     <button onclick="newProject()">New Project</button>
     <button onclick="newFile()">+ File</button>
     <button onclick="newFolder()">+ Folder</button>
@@ -32,15 +32,46 @@
     <button onclick="duplicateFile()">Duplicate</button>
     <button onclick="runProject()">Run</button>
     <button onclick="autoRunToggle()">Auto Run</button>
-    <button onclick="searchText()">Search</button>
+    <button onclick="projectSearch()">Project Search</button>
     <button onclick="replaceText()">Replace</button>
     <button onclick="askNexAI()">AI Builder</button>
     <button onclick="toggleQuestMode()">VR Mode</button>
     <button onclick="toggleOverlay()">Overlay</button>
     <button onclick="toggleTheme()">Theme</button>
-    <button onclick="exportProject()">Export</button>
-    <button onclick="importProject()">Import</button>
+    <button onclick="openProjectSettings()">Settings</button>
+    <button onclick="exportProject()">Export JSON</button>
+    <button onclick="importProject()">Import JSON</button>
+    <button onclick="exportZip()">Export ZIP</button>
+    <button onclick="importZip()">Import ZIP</button>
     <button onclick="clearConsole()">Clear Console</button>
+</div>
+
+<input id="assetUpload" type="file" multiple hidden onchange="handleAssetUpload(event)">
+<input id="zipImportInput" type="file" accept=".zip" hidden onchange="handleZipImport(event)">
+
+<div id="commandPalette" class="modal hidden">
+    <div class="modalBox">
+        <h2>Command Palette</h2>
+        <input id="commandInput" placeholder="Type a command...">
+        <div id="commandList"></div>
+        <button onclick="closeCommandPalette()">Close</button>
+    </div>
+</div>
+
+<div id="settingsModal" class="modal hidden">
+    <div class="modalBox">
+        <h2>Project Settings</h2>
+        <label>Project Name</label>
+        <input id="settingsProjectName">
+        <label>Default Preview Mode</label>
+        <select id="settingsPreviewMode">
+            <option value="desktop">Desktop</option>
+            <option value="mobile">Mobile</option>
+            <option value="quest">Quest</option>
+        </select>
+        <button onclick="saveProjectSettings()">Save Settings</button>
+        <button onclick="closeProjectSettings()">Close</button>
+    </div>
 </div>
 
 <div class="workspace">
@@ -67,8 +98,18 @@
             <option value="cpp">C++ Preview</option>
         </select>
 
+        <h2>Assets</h2>
+        <button onclick="uploadAssets()">Upload Assets</button>
+        <div id="assetList"></div>
+
         <h2>Extensions</h2>
         <div id="extensionsPanel"></div>
+
+        <h2>Themes</h2>
+        <button onclick="setThemePack('dark')">Dark</button>
+        <button onclick="setThemePack('light')">Light</button>
+        <button onclick="setThemePack('matrix')">Matrix</button>
+        <button onclick="setThemePack('cyber')">Cyber</button>
 
         <h2>Templates</h2>
         <button onclick="installTemplate('portfolio')">Portfolio</button>
@@ -83,7 +124,6 @@
         <div id="tabs"></div>
 
         <h2 id="currentFile">index.html</h2>
-
         <div id="editor"></div>
 
         <div class="previewBar">
@@ -95,6 +135,12 @@
         </div>
 
         <iframe id="preview"></iframe>
+
+        <h2>Terminal</h2>
+        <div id="terminalBox">
+            <div id="terminalOutput">NexIDE Terminal ready. Type help.</div>
+            <input id="terminalInput" placeholder="terminal command..." onkeydown="handleTerminalKey(event)">
+        </div>
 
         <h2>Console</h2>
         <div id="consoleBox">[SYSTEM] Console ready...</div>
@@ -127,6 +173,7 @@
     <span id="statusSaved">Ready</span>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
