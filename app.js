@@ -1,442 +1,399 @@
-const preview = document.getElementById("preview");
-const consoleBox = document.getElementById("consoleBox");
-const devOutput = document.getElementById("devOutput");
-const projectSelect = document.getElementById("projectSelect");
-const fileTree = document.getElementById("fileTree");
-const tabs = document.getElementById("tabs");
-const overlay = document.getElementById("overlay");
-const overlayStatus = document.getElementById("overlayStatus");
-const notifications = document.getElementById("notifications");
-const languageSelect = document.getElementById("languageSelect");
-const extensionsPanel = document.getElementById("extensionsPanel");
+(() => {
+    "use strict";
 
-let monacoEditor;
-let currentProject = "Default Project";
-let currentFile = "index.html";
-let previewMode = "desktop";
-let autoRun = false;
-let forcedLanguage = "auto";
-let errors = [];
+    const $ = id => document.getElementById(id);
 
-let projects = {
-    "Default Project": {
-        "index.html": `<h1>Hello Quest 3</h1>
-<p>NexIDE VR VS works!</p>
+    const DOM = {
+        preview: $("preview"),
+        consoleBox: $("consoleBox"),
+        devOutput: $("devOutput"),
+        projectSelect: $("projectSelect"),
+        fileTree: $("fileTree"),
+        tabs: $("tabs"),
+        overlay: $("overlay"),
+        overlayStatus: $("overlayStatus"),
+        notifications: $("notifications"),
+        languageSelect: $("languageSelect"),
+        extensionsPanel: $("extensionsPanel"),
+        commandPalette: $("commandPalette"),
+        commandInput: $("commandInput"),
+        commandList: $("commandList"),
+        settingsModal: $("settingsModal"),
+        settingsProjectName: $("settingsProjectName"),
+        settingsPreviewMode: $("settingsPreviewMode"),
+        assetUpload: $("assetUpload"),
+        assetList: $("assetList"),
+        zipImportInput: $("zipImportInput"),
+        terminalOutput: $("terminalOutput"),
+        terminalInput: $("terminalInput")
+    };
+
+    const STORAGE_KEY = "nexide-omega-plus";
+
+    let editor = null;
+
+    const state = {
+        currentProject: "Default Project",
+        currentFile: "index.html",
+        previewMode: "desktop",
+        forcedLanguage: "auto",
+        autoRun: false,
+        errors: [],
+        projects: {
+            "Default Project": {
+                "index.html": `<h1>Hello Quest 3</h1>
+<p>NexIDE VR Omega+ works!</p>
 <button onclick="console.log('Button clicked')">Click Me</button>`,
-        "style.css": `body {
+                "style.css": `body {
     font-family: Arial;
     background: #111122;
     color: white;
     padding: 30px;
 }`,
-        "app.js": `console.log("Preview app loaded");`,
-        "README.md": `# NexIDE VR
+                "app.js": `console.log("Preview app loaded");`,
+                "README.md": `# NexIDE VR Omega+
 
-This file is Markdown.
-
-- Monaco Editor
-- Extensions
-- Multi-language preview`,
-        "config.json": `{
+A Quest-friendly browser IDE.`,
+                "config.json": `{
   "name": "NexIDE VR",
-  "version": "VS"
+  "version": "Omega+"
 }`,
-        "main.py": `print("Python preview only for now")`,
-        "assets/": "",
-        "scripts/": ""
-    }
-};
-
-const extensions = {
-    "HTML Runner": true,
-    "CSS Injector": true,
-    "JavaScript Runner": true,
-    "Markdown Preview": true,
-    "JSON Formatter": true,
-    "Python Preview": false,
-    "Java Preview": false,
-    "C# Preview": false,
-    "C++ Preview": false,
-    "Theme Pack": true,
-    "Quest UI Pack": true
-};
-
-function getFiles() {
-    return projects[currentProject];
-}
-
-function getEditorValue() {
-    return monacoEditor ? monacoEditor.getValue() : "";
-}
-
-function setEditorValue(value) {
-    if (monacoEditor) monacoEditor.setValue(value || "");
-}
-
-function notify(message, type = "info") {
-    const note = document.createElement("div");
-    note.className = "notification " + type;
-    note.textContent = message;
-    notifications.appendChild(note);
-
-    setTimeout(() => note.remove(), 3500);
-}
-
-function updateOverlay(message) {
-    overlayStatus.textContent = message;
-}
-
-function toggleOverlay() {
-    overlay.classList.toggle("hidden");
-}
-
-function saveAll() {
-    localStorage.setItem("nexide-vs", JSON.stringify({
-        currentProject,
-        currentFile,
-        previewMode,
-        autoRun,
-        forcedLanguage,
-        projects
-    }));
-}
-
-function loadAll() {
-    const saved = localStorage.getItem("nexide-vs");
-    if (!saved) return;
-
-    const data = JSON.parse(saved);
-    currentProject = data.currentProject || currentProject;
-    currentFile = data.currentFile || currentFile;
-    previewMode = data.previewMode || previewMode;
-    autoRun = data.autoRun || false;
-    forcedLanguage = data.forcedLanguage || "auto";
-    projects = data.projects || projects;
-}
-
-function saveCurrentFile() {
-    getFiles()[currentFile] = getEditorValue();
-    saveAll();
-}
-
-function logConsole(message) {
-    consoleBox.innerHTML += "\n" + message;
-    consoleBox.scrollTop = consoleBox.scrollHeight;
-}
-
-function clearConsole() {
-    consoleBox.innerHTML = "[SYSTEM] Console cleared.";
-    notify("Console cleared");
-}
-
-function detectLanguage(fileName) {
-    if (forcedLanguage !== "auto") return forcedLanguage;
-
-    if (fileName.endsWith(".html")) return "html";
-    if (fileName.endsWith(".css")) return "css";
-    if (fileName.endsWith(".js")) return "javascript";
-    if (fileName.endsWith(".json")) return "json";
-    if (fileName.endsWith(".md")) return "markdown";
-    if (fileName.endsWith(".py")) return "python";
-    if (fileName.endsWith(".java")) return "java";
-    if (fileName.endsWith(".cs")) return "csharp";
-    if (fileName.endsWith(".cpp") || fileName.endsWith(".cxx") || fileName.endsWith(".cc")) return "cpp";
-
-    return "plaintext";
-}
-
-function applyLanguage() {
-    const lang = detectLanguage(currentFile);
-    if (monacoEditor) {
-        monaco.editor.setModelLanguage(monacoEditor.getModel(), lang);
-    }
-
-    document.getElementById("statusLanguage").innerText = "Language: " + lang;
-    languageSelect.value = forcedLanguage;
-}
-
-function changeLanguage(lang) {
-    forcedLanguage = lang;
-    applyLanguage();
-    saveAll();
-    notify("Language set to " + lang);
-}
-
-function renderProjects() {
-    projectSelect.innerHTML = "";
-
-    Object.keys(projects).forEach(name => {
-        const option = document.createElement("option");
-        option.value = name;
-        option.textContent = name;
-        option.selected = name === currentProject;
-        projectSelect.appendChild(option);
-    });
-}
-
-function renderTree() {
-    const files = getFiles();
-    fileTree.innerHTML = "";
-
-    Object.keys(files).forEach(name => {
-        const item = document.createElement("div");
-        item.className = "tree-item";
-        item.textContent = name;
-
-        if (name.endsWith("/")) item.classList.add("folder");
-        if (name === currentFile) item.classList.add("active");
-
-        item.onclick = () => {
-            if (!name.endsWith("/")) loadFile(name);
-        };
-
-        fileTree.appendChild(item);
-    });
-}
-
-function renderTabs() {
-    const files = getFiles();
-    tabs.innerHTML = "";
-
-    Object.keys(files).forEach(name => {
-        if (name.endsWith("/")) return;
-
-        const tab = document.createElement("div");
-        tab.className = "tab";
-        tab.textContent = name;
-
-        if (name === currentFile) tab.classList.add("active");
-
-        tab.onclick = () => loadFile(name);
-        tabs.appendChild(tab);
-    });
-}
-
-function renderExtensions() {
-    extensionsPanel.innerHTML = "";
-
-    Object.keys(extensions).forEach(name => {
-        const card = document.createElement("div");
-        card.className = "extension-card";
-        if (extensions[name]) card.classList.add("active");
-
-        card.textContent = `${extensions[name] ? "✓" : "○"} ${name}`;
-
-        card.onclick = () => {
-            extensions[name] = !extensions[name];
-            renderExtensions();
-            notify(name + ": " + (extensions[name] ? "Enabled" : "Disabled"));
-        };
-
-        extensionsPanel.appendChild(card);
-    });
-}
-
-function updateStatus(text = "Ready") {
-    const value = getEditorValue();
-
-    document.getElementById("statusProject").innerText = "Project: " + currentProject;
-    document.getElementById("statusFile").innerText = "File: " + currentFile;
-    document.getElementById("statusLines").innerText = "Lines: " + value.split("\n").length;
-    document.getElementById("statusChars").innerText = "Characters: " + value.length;
-    document.getElementById("statusMode").innerText = "Mode: " + previewMode;
-    document.getElementById("statusSaved").innerText = text;
-
-    updateOverlay(currentProject + " | " + currentFile + " | " + text);
-}
-
-function refreshUI() {
-    renderProjects();
-    renderTree();
-    renderTabs();
-    renderExtensions();
-
-    document.getElementById("currentFile").innerText = currentFile;
-    setEditorValue(getFiles()[currentFile] || "");
-
-    applyLanguage();
-    setPreviewMode(previewMode, false);
-    updateStatus();
-}
-
-function loadFile(name) {
-    saveCurrentFile();
-    currentFile = name;
-    refreshUI();
-    notify("Opened " + name);
-}
-
-function switchProject(name) {
-    saveCurrentFile();
-
-    currentProject = name;
-
-    const files = getFiles();
-    currentFile = files["index.html"] !== undefined ? "index.html" : Object.keys(files).find(f => !f.endsWith("/"));
-
-    refreshUI();
-    runProject();
-
-    notify("Switched to " + name);
-}
-
-function newProject() {
-    const name = prompt("Project name:", "New Project");
-    if (!name) return;
-
-    if (projects[name]) {
-        notify("Project already exists", "error");
-        return;
-    }
-
-    projects[name] = {
-        "index.html": `<h1>${name}</h1><p>New VS project ready.</p>`,
-        "style.css": `body { font-family: Arial; background:#050512; color:white; padding:30px; }`,
-        "app.js": `console.log("${name} loaded");`,
-        "README.md": `# ${name}`,
-        "assets/": "",
-        "scripts/": ""
+                "assets/": "",
+                "scripts/": ""
+            }
+        },
+        extensions: {
+            "HTML Runner": true,
+            "CSS Injector": true,
+            "JavaScript Runner": true,
+            "Markdown Preview": true,
+            "JSON Validator": true,
+            "Asset Viewer": true,
+            "ZIP Export": true,
+            "ZIP Import": true,
+            "Quest UI Pack": true,
+            "Theme Marketplace": true,
+            "Terminal UI": true,
+            "GitHub Panel": true,
+            "Python Preview": false,
+            "Java Preview": false,
+            "C# Preview": false,
+            "C++ Preview": false
+        }
     };
 
-    currentProject = name;
-    currentFile = "index.html";
-
-    saveAll();
-    refreshUI();
-    runProject();
-    notify("Project created: " + name);
-}
-
-function newFile() {
-    const name = prompt("File name:", "new-file.html");
-    if (!name) return;
-
-    const files = getFiles();
-    if (files[name]) {
-        notify("File already exists", "error");
-        return;
+    function files() {
+        return state.projects[state.currentProject];
     }
 
-    files[name] = "";
-    currentFile = name;
-
-    saveAll();
-    refreshUI();
-    notify("File created: " + name);
-}
-
-function newFolder() {
-    const name = prompt("Folder name:", "folder");
-    if (!name) return;
-
-    const folderName = name.endsWith("/") ? name : name + "/";
-    const files = getFiles();
-
-    if (files[folderName]) {
-        notify("Folder already exists", "error");
-        return;
+    function getValue() {
+        return editor ? editor.getValue() : "";
     }
 
-    files[folderName] = "";
-    saveAll();
-    refreshUI();
-    notify("Folder created: " + folderName);
-}
-
-function renameItem() {
-    const files = getFiles();
-    const newName = prompt("Rename:", currentFile);
-
-    if (!newName || files[newName]) {
-        notify("Rename cancelled or already exists", "warn");
-        return;
+    function setValue(value) {
+        if (editor) editor.setValue(value || "");
     }
 
-    files[newName] = files[currentFile];
-    delete files[currentFile];
-
-    currentFile = newName.endsWith("/") ? Object.keys(files).find(f => !f.endsWith("/")) : newName;
-
-    saveAll();
-    refreshUI();
-    notify("Renamed to " + newName);
-}
-
-function deleteItem() {
-    const files = getFiles();
-
-    if (Object.keys(files).length <= 1) {
-        notify("You need at least one file", "error");
-        return;
+    function notify(message, type = "info") {
+        const note = document.createElement("div");
+        note.className = "notification " + type;
+        note.textContent = message;
+        DOM.notifications.appendChild(note);
+        setTimeout(() => note.remove(), 3500);
     }
 
-    if (!confirm("Delete " + currentFile + "?")) return;
-
-    delete files[currentFile];
-    currentFile = Object.keys(files).find(f => !f.endsWith("/"));
-
-    saveAll();
-    refreshUI();
-    runProject();
-    notify("Deleted item");
-}
-
-function duplicateFile() {
-    const files = getFiles();
-    if (currentFile.endsWith("/")) return;
-
-    const copyName = currentFile.replace(".", "-copy.");
-    if (files[copyName]) {
-        notify("Copy already exists", "error");
-        return;
+    function log(message) {
+        DOM.consoleBox.innerHTML += "\n" + message;
+        DOM.consoleBox.scrollTop = DOM.consoleBox.scrollHeight;
     }
 
-    files[copyName] = files[currentFile];
-    currentFile = copyName;
-
-    saveAll();
-    refreshUI();
-    notify("Duplicated as " + copyName);
-}
-
-function runProject() {
-    saveCurrentFile();
-    clearConsole();
-    errors = [];
-
-    const files = getFiles();
-    const lang = detectLanguage(currentFile);
-
-    if (currentFile.endsWith(".md")) {
-        runMarkdown(files[currentFile]);
-        return;
+    function terminal(message) {
+        DOM.terminalOutput.innerHTML += "\n" + message;
+        DOM.terminalOutput.scrollTop = DOM.terminalOutput.scrollHeight;
     }
 
-    if (currentFile.endsWith(".json")) {
-        runJSON(files[currentFile]);
-        return;
+    function saveAll() {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     }
 
-    if (
-        currentFile.endsWith(".py") ||
-        currentFile.endsWith(".java") ||
-        currentFile.endsWith(".cs") ||
-        currentFile.endsWith(".cpp")
-    ) {
-        runPreviewOnly(lang, files[currentFile]);
-        return;
+    function loadAll() {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (!saved) return;
+
+        try {
+            const data = JSON.parse(saved);
+            Object.assign(state, data);
+        } catch {
+            notify("Save data failed to load", "warn");
+        }
     }
 
-    const html = files["index.html"] || "";
-    const css = files["style.css"] || "";
-    const js = files["app.js"] || "";
+    function saveCurrentFile() {
+        files()[state.currentFile] = getValue();
+        saveAll();
+    }
 
-    preview.srcdoc = `
+    function detectLanguage(name = state.currentFile) {
+        if (state.forcedLanguage !== "auto") return state.forcedLanguage;
+        if (name.endsWith(".html")) return "html";
+        if (name.endsWith(".css")) return "css";
+        if (name.endsWith(".js")) return "javascript";
+        if (name.endsWith(".json")) return "json";
+        if (name.endsWith(".md")) return "markdown";
+        if (name.endsWith(".py")) return "python";
+        if (name.endsWith(".java")) return "java";
+        if (name.endsWith(".cs")) return "csharp";
+        if (name.endsWith(".cpp") || name.endsWith(".cxx") || name.endsWith(".cc")) return "cpp";
+        return "plaintext";
+    }
+
+    function applyLanguage() {
+        if (!editor || !window.monaco) return;
+        const lang = detectLanguage();
+        monaco.editor.setModelLanguage(editor.getModel(), lang);
+        $("statusLanguage").innerText = "Language: " + lang;
+        DOM.languageSelect.value = state.forcedLanguage;
+    }
+
+    function updateStatus(text = "Ready") {
+        const value = getValue();
+        $("statusProject").innerText = "Project: " + state.currentProject;
+        $("statusFile").innerText = "File: " + state.currentFile;
+        $("statusLanguage").innerText = "Language: " + detectLanguage();
+        $("statusLines").innerText = "Lines: " + value.split("\n").length;
+        $("statusChars").innerText = "Characters: " + value.length;
+        $("statusMode").innerText = "Mode: " + state.previewMode;
+        $("statusSaved").innerText = text;
+        DOM.overlayStatus.textContent = `${state.currentProject} | ${state.currentFile} | ${text}`;
+    }
+
+    function renderProjects() {
+        DOM.projectSelect.innerHTML = "";
+        Object.keys(state.projects).forEach(name => {
+            const option = document.createElement("option");
+            option.value = name;
+            option.textContent = name;
+            option.selected = name === state.currentProject;
+            DOM.projectSelect.appendChild(option);
+        });
+    }
+
+    function renderTree() {
+        DOM.fileTree.innerHTML = "";
+        Object.keys(files()).forEach(name => {
+            const item = document.createElement("div");
+            item.className = "tree-item";
+            item.textContent = name;
+
+            if (name.endsWith("/")) item.classList.add("folder");
+            if (name === state.currentFile) item.classList.add("active");
+
+            item.onclick = () => {
+                if (!name.endsWith("/")) loadFile(name);
+            };
+
+            DOM.fileTree.appendChild(item);
+        });
+    }
+
+    function renderTabs() {
+        DOM.tabs.innerHTML = "";
+        Object.keys(files()).forEach(name => {
+            if (name.endsWith("/")) return;
+
+            const tab = document.createElement("div");
+            tab.className = "tab";
+            tab.textContent = name;
+
+            if (name === state.currentFile) tab.classList.add("active");
+
+            tab.onclick = () => loadFile(name);
+            DOM.tabs.appendChild(tab);
+        });
+    }
+
+    function renderExtensions() {
+        DOM.extensionsPanel.innerHTML = "";
+        Object.keys(state.extensions).forEach(name => {
+            const card = document.createElement("div");
+            card.className = "extension-card";
+            if (state.extensions[name]) card.classList.add("active");
+            card.textContent = `${state.extensions[name] ? "✓" : "○"} ${name}`;
+            card.onclick = () => {
+                state.extensions[name] = !state.extensions[name];
+                saveAll();
+                renderExtensions();
+                notify(`${name}: ${state.extensions[name] ? "Enabled" : "Disabled"}`);
+            };
+            DOM.extensionsPanel.appendChild(card);
+        });
+    }
+
+    function renderAssets() {
+        DOM.assetList.innerHTML = "";
+
+        Object.keys(files())
+            .filter(name => name.startsWith("assets/") && !name.endsWith("/"))
+            .forEach(name => {
+                const item = document.createElement("div");
+                item.className = "asset-item";
+
+                if (/\.(png|jpg|jpeg|gif|svg|webp)$/i.test(name)) item.classList.add("image");
+                if (/\.(mp3|wav|ogg)$/i.test(name)) item.classList.add("audio");
+                if (/\.(mp4|webm)$/i.test(name)) item.classList.add("video");
+
+                item.textContent = name;
+                item.onclick = () => loadFile(name);
+                DOM.assetList.appendChild(item);
+            });
+    }
+
+    function refreshUI() {
+        renderProjects();
+        renderTree();
+        renderTabs();
+        renderExtensions();
+        renderAssets();
+
+        $("currentFile").innerText = state.currentFile;
+        setValue(files()[state.currentFile] || "");
+
+        applyLanguage();
+        setPreviewMode(state.previewMode, false);
+        updateStatus();
+    }
+
+    function loadFile(name) {
+        saveCurrentFile();
+        state.currentFile = name;
+        refreshUI();
+        notify("Opened " + name);
+    }
+
+    function switchProject(name) {
+        saveCurrentFile();
+        state.currentProject = name;
+        const projectFiles = files();
+        state.currentFile = projectFiles["index.html"] !== undefined
+            ? "index.html"
+            : Object.keys(projectFiles).find(f => !f.endsWith("/"));
+        refreshUI();
+        runProject();
+        notify("Switched to " + name);
+    }
+
+    function newProject() {
+        const name = prompt("Project name:", "New Project");
+        if (!name) return;
+        if (state.projects[name]) return notify("Project already exists", "error");
+
+        state.projects[name] = {
+            "index.html": `<h1>${name}</h1><p>New Omega+ project ready.</p>`,
+            "style.css": `body { font-family: Arial; background:#050512; color:white; padding:30px; }`,
+            "app.js": `console.log("${name} loaded");`,
+            "README.md": `# ${name}`,
+            "assets/": "",
+            "scripts/": ""
+        };
+
+        state.currentProject = name;
+        state.currentFile = "index.html";
+        saveAll();
+        refreshUI();
+        runProject();
+        notify("Project created");
+    }
+
+    function newFile() {
+        const name = prompt("File name:", "new-file.html");
+        if (!name) return;
+        if (files()[name]) return notify("File exists", "error");
+
+        files()[name] = "";
+        state.currentFile = name;
+        saveAll();
+        refreshUI();
+        notify("File created");
+    }
+
+    function newFolder() {
+        const name = prompt("Folder name:", "folder");
+        if (!name) return;
+
+        const folder = name.endsWith("/") ? name : name + "/";
+        if (files()[folder]) return notify("Folder exists", "error");
+
+        files()[folder] = "";
+        saveAll();
+        refreshUI();
+        notify("Folder created");
+    }
+
+    function renameItem() {
+        const newName = prompt("Rename:", state.currentFile);
+        if (!newName || files()[newName]) return notify("Rename cancelled", "warn");
+
+        files()[newName] = files()[state.currentFile];
+        delete files()[state.currentFile];
+        state.currentFile = newName.endsWith("/") ? Object.keys(files()).find(f => !f.endsWith("/")) : newName;
+
+        saveAll();
+        refreshUI();
+        notify("Renamed");
+    }
+
+    function deleteItem() {
+        if (Object.keys(files()).length <= 1) return notify("Need at least one file", "error");
+        if (!confirm("Delete " + state.currentFile + "?")) return;
+
+        delete files()[state.currentFile];
+        state.currentFile = Object.keys(files()).find(f => !f.endsWith("/"));
+
+        saveAll();
+        refreshUI();
+        runProject();
+        notify("Deleted");
+    }
+
+    function duplicateFile() {
+        if (state.currentFile.endsWith("/")) return;
+
+        const copyName = state.currentFile.replace(".", "-copy.");
+        if (files()[copyName]) return notify("Copy exists", "error");
+
+        files()[copyName] = files()[state.currentFile];
+        state.currentFile = copyName;
+
+        saveAll();
+        refreshUI();
+        notify("Duplicated");
+    }
+
+    function clearConsole() {
+        DOM.consoleBox.innerHTML = "[SYSTEM] Console cleared.";
+    }
+
+    function runProject() {
+        saveCurrentFile();
+        clearConsole();
+        state.errors = [];
+
+        const f = files();
+
+        if (state.currentFile.endsWith(".md")) return runMarkdown(f[state.currentFile]);
+        if (state.currentFile.endsWith(".json")) return runJSON(f[state.currentFile]);
+        if (/\.(py|java|cs|cpp|cxx|cc)$/i.test(state.currentFile)) {
+            return runPreviewOnly(detectLanguage(), f[state.currentFile]);
+        }
+
+        const html = f["index.html"] || "";
+        const css = f["style.css"] || "";
+        const js = f["app.js"] || "";
+
+        DOM.preview.srcdoc = `
 <!DOCTYPE html>
 <html>
-<head>
-<style>${css}</style>
-</head>
+<head><style>${css}</style></head>
 <body>
 ${html}
 <script>
@@ -444,22 +401,22 @@ const oldLog = console.log;
 const oldWarn = console.warn;
 const oldError = console.error;
 
-console.log = function(msg) {
+console.log = msg => {
     parent.postMessage({ type: "log", message: String(msg) }, "*");
     oldLog(msg);
 };
 
-console.warn = function(msg) {
+console.warn = msg => {
     parent.postMessage({ type: "warn", message: String(msg) }, "*");
     oldWarn(msg);
 };
 
-console.error = function(msg) {
+console.error = msg => {
     parent.postMessage({ type: "error", message: String(msg) }, "*");
     oldError(msg);
 };
 
-window.onerror = function(message, source, line) {
+window.onerror = (message, source, line) => {
     parent.postMessage({ type: "error", message: message + " at line " + line }, "*");
 };
 
@@ -472,408 +429,572 @@ ${js}
 </body>
 </html>`;
 
-    logConsole("[SYSTEM] Web preview started.");
-    updateStatus("Preview Updated");
-    notify("Preview updated");
-}
-
-function runMarkdown(markdown) {
-    const html = markdown
-        .replace(/^# (.*$)/gim, "<h1>$1</h1>")
-        .replace(/^## (.*$)/gim, "<h2>$1</h2>")
-        .replace(/^- (.*$)/gim, "<li>$1</li>")
-        .replace(/\n/g, "<br>");
-
-    preview.srcdoc = `<body style="font-family:Arial;padding:30px">${html}</body>`;
-    logConsole("[MARKDOWN] Preview rendered.");
-    notify("Markdown preview rendered");
-}
-
-function runJSON(json) {
-    try {
-        const parsed = JSON.parse(json);
-        preview.srcdoc = `<pre style="padding:20px;font-size:16px">${JSON.stringify(parsed, null, 2)}</pre>`;
-        logConsole("[JSON] Valid JSON.");
-        notify("Valid JSON");
-    } catch (err) {
-        logConsole("[JSON ERROR] " + err.message);
-        notify("JSON error", "error");
+        log("[SYSTEM] Web preview started.");
+        updateStatus("Preview Updated");
+        notify("Preview updated");
     }
-}
 
-function runPreviewOnly(lang, code) {
-    preview.srcdoc = `
+    function runMarkdown(markdown = "") {
+        const html = markdown
+            .replace(/^# (.*$)/gim, "<h1>$1</h1>")
+            .replace(/^## (.*$)/gim, "<h2>$1</h2>")
+            .replace(/^- (.*$)/gim, "<li>$1</li>")
+            .replace(/\n/g, "<br>");
+
+        DOM.preview.srcdoc = `<body style="font-family:Arial;padding:30px">${html}</body>`;
+        log("[MARKDOWN] Preview rendered.");
+        notify("Markdown preview");
+    }
+
+    function runJSON(json = "") {
+        try {
+            const parsed = JSON.parse(json);
+            DOM.preview.srcdoc = `<pre style="padding:20px;font-size:16px">${escapeHTML(JSON.stringify(parsed, null, 2))}</pre>`;
+            log("[JSON] Valid JSON.");
+            notify("Valid JSON");
+        } catch (err) {
+            log("[JSON ERROR] " + err.message);
+            notify("JSON error", "error");
+        }
+    }
+
+    function runPreviewOnly(lang, code = "") {
+        DOM.preview.srcdoc = `
 <body style="font-family:Arial;padding:30px">
 <h1>${lang.toUpperCase()} Preview</h1>
-<p>This language is supported for editing and preview, but execution needs a backend runtime.</p>
+<p>Editing supported. Execution needs a backend runtime later.</p>
 <pre>${escapeHTML(code)}</pre>
 </body>`;
-    logConsole("[RUNTIME] " + lang + " execution requires backend runtime.");
-    notify(lang + " preview only", "warn");
-}
-
-function escapeHTML(text) {
-    return text.replace(/[&<>"']/g, char => ({
-        "&": "&amp;",
-        "<": "&lt;",
-        ">": "&gt;",
-        '"': "&quot;",
-        "'": "&#039;"
-    }[char]));
-}
-
-window.addEventListener("message", event => {
-    if (!event.data || !event.data.type) return;
-
-    if (event.data.type === "log") {
-        logConsole("[LOG] " + event.data.message);
-        notify("Log: " + event.data.message);
+        log("[RUNTIME] " + lang + " execution requires backend.");
+        notify(lang + " preview only", "warn");
     }
 
-    if (event.data.type === "warn") {
-        logConsole("[WARN] " + event.data.message);
-        notify("Warn: " + event.data.message, "warn");
+    function escapeHTML(text = "") {
+        return text.replace(/[&<>"']/g, c => ({
+            "&": "&amp;",
+            "<": "&lt;",
+            ">": "&gt;",
+            '"': "&quot;",
+            "'": "&#039;"
+        }[c]));
     }
 
-    if (event.data.type === "error") {
-        errors.push(event.data.message);
-        logConsole("[ERROR] " + event.data.message);
-        notify("Error: " + event.data.message, "error");
-    }
-});
-
-function autoRunToggle() {
-    autoRun = !autoRun;
-    saveAll();
-    notify("Auto Run: " + (autoRun ? "ON" : "OFF"));
-}
-
-function setPreviewMode(mode, announce = true) {
-    previewMode = mode;
-    preview.classList.remove("mobile", "quest");
-
-    if (mode === "mobile") preview.classList.add("mobile");
-    if (mode === "quest") preview.classList.add("quest");
-
-    document.getElementById("statusMode").innerText = "Mode: " + mode;
-
-    if (announce) notify("Preview mode: " + mode);
-
-    saveAll();
-}
-
-function fullscreenPreview() {
-    if (preview.requestFullscreen) preview.requestFullscreen();
-    else notify("Fullscreen unsupported here", "warn");
-}
-
-function searchText() {
-    const search = prompt("Search:");
-    if (!search) return;
-
-    const files = getFiles();
-    let results = [];
-
-    Object.keys(files).forEach(file => {
-        if (!file.endsWith("/") && files[file].includes(search)) results.push(file);
-    });
-
-    notify(results.length ? "Found in: " + results.join(", ") : "Not found", results.length ? "info" : "warn");
-    logConsole(results.length ? "[SEARCH] Found in: " + results.join(", ") : "[SEARCH] Not found.");
-}
-
-function replaceText() {
-    const find = prompt("Find:");
-    if (!find) return;
-
-    const replace = prompt("Replace with:");
-    if (replace === null) return;
-
-    setEditorValue(getEditorValue().split(find).join(replace));
-    saveCurrentFile();
-    updateStatus("Replaced");
-    notify("Replaced text in " + currentFile);
-}
-
-function askNexAI() {
-    const ask = prompt("Ask NexAI:");
-    if (!ask) return;
-
-    const q = ask.toLowerCase();
-    const files = getFiles();
-
-    if (q.includes("login")) {
-        files["index.html"] = `<div class="card"><h1>Login</h1><input placeholder="Username"><input type="password" placeholder="Password"><button onclick="console.log('Login clicked')">Login</button></div>`;
-        files["style.css"] = `body{background:#050512;color:white;font-family:Arial;display:flex;justify-content:center;align-items:center;height:100vh}.card{background:#111122;padding:30px;border-radius:12px}input{display:block;margin:10px 0;padding:12px}`;
-        files["app.js"] = `console.log("Login page loaded");`;
-
-        currentFile = "index.html";
-        refreshUI();
-        runProject();
-        notify("AI created login page");
-        return;
+    function autoRunToggle() {
+        state.autoRun = !state.autoRun;
+        saveAll();
+        notify("Auto Run: " + (state.autoRun ? "ON" : "OFF"));
     }
 
-    if (q.includes("python")) {
-        files["main.py"] = `print("Hello from NexIDE VR")`;
-        currentFile = "main.py";
-        refreshUI();
-        runProject();
-        notify("AI created Python file");
-        return;
+    function setPreviewMode(mode, announce = true) {
+        state.previewMode = mode;
+        DOM.preview.classList.remove("mobile", "quest");
+
+        if (mode === "mobile") DOM.preview.classList.add("mobile");
+        if (mode === "quest") DOM.preview.classList.add("quest");
+
+        $("statusMode").innerText = "Mode: " + mode;
+        if (announce) notify("Preview mode: " + mode);
+        saveAll();
     }
 
-    if (q.includes("portfolio")) {
-        installTemplate("portfolio");
-        notify("AI created portfolio");
-        return;
+    function fullscreenPreview() {
+        if (DOM.preview.requestFullscreen) DOM.preview.requestFullscreen();
+        else notify("Fullscreen unsupported", "warn");
     }
 
-    if (q.includes("dashboard")) {
-        installTemplate("dashboard");
-        notify("AI created dashboard");
-        return;
+    function changeLanguage(lang) {
+        state.forcedLanguage = lang;
+        applyLanguage();
+        saveAll();
+        notify("Language: " + lang);
     }
 
-    if (q.includes("explain")) {
-        logConsole("[NEXAI] NexIDE supports browser-executable languages now. Python/Java/C#/C++ need a backend runtime later.");
-        notify("Explanation sent to console");
-        return;
+    function projectSearch() {
+        const query = prompt("Search project:");
+        if (!query) return;
+
+        const results = Object.keys(files()).filter(name =>
+            !name.endsWith("/") && files()[name].includes(query)
+        );
+
+        log(results.length ? "[SEARCH] " + results.join(", ") : "[SEARCH] No results");
+        notify(results.length ? "Found results" : "No results", results.length ? "info" : "warn");
     }
 
-    if (q.includes("fix")) {
-        logConsole("[NEXAI] Check missing IDs, unclosed tags, syntax errors, JSON validity, and console errors.");
-        notify("Fix advice sent to console");
-        return;
+    function replaceText() {
+        const find = prompt("Find:");
+        if (!find) return;
+
+        const replace = prompt("Replace with:");
+        if (replace === null) return;
+
+        setValue(getValue().split(find).join(replace));
+        saveCurrentFile();
+        updateStatus("Replaced");
+        notify("Replaced text");
     }
 
-    logConsole("[NEXAI] Try: create login page, create portfolio, create dashboard, create python file, explain code, fix code.");
-    notify("NexAI response in console");
-}
+    function installTemplate(type) {
+        const templates = {
+            portfolio: {
+                html: `<h1>My Portfolio</h1><p>Developer | Designer | Creator</p><div class="card">NexIDE VR Project</div>`,
+                css: `body{font-family:Arial;background:#050512;color:white;padding:40px}.card{background:#111122;padding:20px;border-radius:10px}`,
+                js: `console.log("Portfolio loaded");`
+            },
+            dashboard: {
+                html: `<h1>Dashboard</h1><div class="grid"><div>Users: 1204</div><div>Projects: 32</div><div>Status: Online</div></div>`,
+                css: `body{font-family:Arial;background:#050512;color:white;padding:30px}.grid{display:grid;gap:15px}.grid div{background:#111122;padding:20px;border-radius:10px}`,
+                js: `console.log("Dashboard loaded");`
+            },
+            todo: {
+                html: `<h1>Todo App</h1><input id="task" placeholder="Task"><button onclick="addTask()">Add</button><ul id="list"></ul>`,
+                css: `body{font-family:Arial;background:#050512;color:white;padding:30px}`,
+                js: `function addTask(){const li=document.createElement("li");li.textContent=document.getElementById("task").value;document.getElementById("list").appendChild(li);console.log("Task added");}`
+            },
+            markdown: { file: "README.md", code: `# NexIDE VR\n\n- Markdown preview\n- Quest ready` },
+            json: { file: "config.json", code: `{\n  "project": "NexIDE VR",\n  "quest": true\n}` },
+            python: { file: "main.py", code: `print("Hello from NexIDE VR")` }
+        };
 
-function installTemplate(type) {
-    const files = getFiles();
+        const t = templates[type];
+        if (!t) return notify("Template missing", "error");
 
-    const templates = {
-        portfolio: {
-            html: `<h1>My Portfolio</h1><p>Developer | Designer | Creator</p><div class="card">NexIDE VR Project</div>`,
-            css: `body{font-family:Arial;background:#050512;color:white;padding:40px}.card{background:#111122;padding:20px;border-radius:10px}`,
-            js: `console.log("Portfolio loaded");`
-        },
-        dashboard: {
-            html: `<h1>Dashboard</h1><div class="grid"><div>Users: 1204</div><div>Projects: 32</div><div>Status: Online</div></div>`,
-            css: `body{font-family:Arial;background:#050512;color:white;padding:30px}.grid{display:grid;gap:15px}.grid div{background:#111122;padding:20px;border-radius:10px}`,
-            js: `console.log("Dashboard loaded");`
-        },
-        todo: {
-            html: `<h1>Todo App</h1><input id="task" placeholder="Task"><button onclick="addTask()">Add</button><ul id="list"></ul>`,
-            css: `body{font-family:Arial;background:#050512;color:white;padding:30px}`,
-            js: `function addTask(){const li=document.createElement("li");li.textContent=document.getElementById("task").value;document.getElementById("list").appendChild(li);console.log("Task added");}`
-        },
-        markdown: {
-            file: "README.md",
-            code: `# NexIDE VR
-
-## Markdown Preview
-
-- Works in browser
-- Quest-friendly
-- No backend needed`
-        },
-        json: {
-            file: "config.json",
-            code: `{
-  "project": "NexIDE VR",
-  "mode": "browser",
-  "quest": true
-}`
-        },
-        python: {
-            file: "main.py",
-            code: `print("Hello from NexIDE VR")
-print("Python execution needs backend later")`
+        if (t.file) {
+            files()[t.file] = t.code;
+            state.currentFile = t.file;
+        } else {
+            files()["index.html"] = t.html;
+            files()["style.css"] = t.css;
+            files()["app.js"] = t.js;
+            state.currentFile = "index.html";
         }
-    };
-
-    const t = templates[type];
-
-    if (!t) {
-        notify("Template not found", "error");
-        return;
-    }
-
-    if (t.file) {
-        files[t.file] = t.code;
-        currentFile = t.file;
-    } else {
-        files["index.html"] = t.html;
-        files["style.css"] = t.css;
-        files["app.js"] = t.js;
-        currentFile = "index.html";
-    }
-
-    refreshUI();
-    saveAll();
-    runProject();
-    notify("Installed template: " + type);
-}
-
-function inspectDOM() {
-    const html = getFiles()["index.html"] || "";
-    const tags = html.match(/<[^/!][^>]*>/g) || [];
-    devOutput.innerText = "DOM Tags Found:\n" + tags.join("\n");
-    notify("DOM tree updated");
-}
-
-function inspectCSS() {
-    const css = getFiles()["style.css"] || "";
-    const rules = css.match(/{/g) || [];
-    devOutput.innerText = "CSS Rules: " + rules.length + "\n\n" + css.slice(0, 700);
-    notify("CSS inspected");
-}
-
-function storageViewer() {
-    devOutput.innerText = "LocalStorage Keys:\n" + Object.keys(localStorage).join("\n");
-    notify("Storage viewed");
-}
-
-function performanceStats() {
-    const files = getFiles();
-    let total = 0;
-
-    Object.keys(files).forEach(file => total += files[file].length);
-
-    devOutput.innerText =
-        "Performance Stats\nFiles: " + Object.keys(files).length +
-        "\nTotal Characters: " + total +
-        "\nEstimated Load: Lightweight\nQuest Mode: " + document.body.classList.contains("quest");
-
-    notify("Performance stats updated");
-}
-
-function networkInfo() {
-    devOutput.innerText =
-        "Network Tab\nExternal Requests: Monaco CDN only\nMode: Browser Preview\nQuest Compatible: Yes\nGitHub Pages: Active";
-    notify("Network info updated");
-}
-
-function errorViewer() {
-    devOutput.innerText = errors.length ? "Errors:\n" + errors.join("\n") : "No errors detected.";
-    notify(errors.length ? "Errors found" : "No errors");
-}
-
-function assetManager() {
-    const files = getFiles();
-    const assets = Object.keys(files).filter(file => file.startsWith("assets/") && !file.endsWith("/"));
-
-    devOutput.innerText = assets.length
-        ? "Assets:\n" + assets.join("\n")
-        : "No assets yet. Create files inside assets/ like assets/logo.svg";
-
-    notify("Asset manager opened");
-}
-
-function githubPanel() {
-    devOutput.innerText =
-        "GitHub Integration\nRepo: tyl-droid/NexIDE-VR\nPages: https://tyl-droid.github.io/NexIDE-VR/\nStatus: Manual sync for now";
-    notify("GitHub panel opened");
-}
-
-function extensionInfo() {
-    devOutput.innerText =
-        "Extensions\n" + Object.keys(extensions).map(name => `${extensions[name] ? "Enabled" : "Disabled"} - ${name}`).join("\n");
-}
-
-function toggleQuestMode() {
-    document.body.classList.toggle("quest");
-    notify("VR Mode toggled");
-}
-
-function toggleTheme() {
-    document.body.classList.toggle("light");
-    localStorage.setItem("nexide-theme", document.body.classList.contains("light") ? "light" : "dark");
-    notify("Theme toggled");
-}
-
-function loadTheme() {
-    if (localStorage.getItem("nexide-theme") === "light") document.body.classList.add("light");
-}
-
-function exportProject() {
-    saveCurrentFile();
-
-    const data = JSON.stringify({ project: currentProject, files: getFiles() }, null, 2);
-    getFiles()["export.json"] = data;
-    currentFile = "export.json";
-
-    refreshUI();
-    updateStatus("Exported");
-    notify("Export saved to export.json");
-}
-
-function importProject() {
-    const data = prompt("Paste exported NexIDE JSON:");
-    if (!data) return;
-
-    try {
-        const imported = JSON.parse(data);
-
-        if (!imported.files) {
-            notify("Invalid project format", "error");
-            return;
-        }
-
-        projects[imported.project || "Imported Project"] = imported.files;
-        currentProject = imported.project || "Imported Project";
-        currentFile = "index.html";
 
         saveAll();
         refreshUI();
         runProject();
-        notify("Project imported");
-    } catch {
-        notify("Import failed", "error");
+        notify("Template installed");
     }
-}
 
-function initMonaco() {
-    require.config({
-        paths: {
-            vs: "https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.49.0/min/vs"
+    function askNexAI() {
+        const ask = prompt("Ask NexAI:");
+        if (!ask) return;
+
+        const q = ask.toLowerCase();
+
+        if (q.includes("login")) {
+            files()["index.html"] = `<div class="card"><h1>Login</h1><input placeholder="Username"><input type="password" placeholder="Password"><button onclick="console.log('Login clicked')">Login</button></div>`;
+            files()["style.css"] = `body{background:#050512;color:white;font-family:Arial;display:flex;justify-content:center;align-items:center;height:100vh}.card{background:#111122;padding:30px;border-radius:12px}input{display:block;margin:10px 0;padding:12px}`;
+            files()["app.js"] = `console.log("Login page loaded");`;
+            state.currentFile = "index.html";
+            refreshUI();
+            runProject();
+            return;
+        }
+
+        if (q.includes("portfolio")) return installTemplate("portfolio");
+        if (q.includes("dashboard")) return installTemplate("dashboard");
+        if (q.includes("python")) return installTemplate("python");
+
+        if (q.includes("explain")) {
+            log("[NEXAI] HTML/CSS/JS run in-browser. Python/Java/C#/C++ need a backend later.");
+            return notify("Explanation in console");
+        }
+
+        if (q.includes("fix")) {
+            log("[NEXAI] Check console errors, broken IDs, JSON validity, and missing tags.");
+            return notify("Fix tips in console");
+        }
+
+        log("[NEXAI] Try: login, portfolio, dashboard, python, explain, fix.");
+    }
+
+    function uploadAssets() {
+        DOM.assetUpload.click();
+    }
+
+    async function handleAssetUpload(event) {
+        const uploaded = Array.from(event.target.files || []);
+        for (const file of uploaded) {
+            const dataUrl = await readFileAsDataURL(file);
+            files()["assets/" + file.name] = dataUrl;
+        }
+
+        saveAll();
+        refreshUI();
+        notify("Assets uploaded");
+    }
+
+    function readFileAsDataURL(file) {
+        return new Promise(resolve => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.readAsDataURL(file);
+        });
+    }
+
+    async function exportZip() {
+        if (!window.JSZip) return notify("JSZip missing", "error");
+
+        saveCurrentFile();
+
+        const zip = new JSZip();
+        Object.keys(files()).forEach(name => {
+            if (!name.endsWith("/")) zip.file(name, files()[name]);
+        });
+
+        const blob = await zip.generateAsync({ type: "blob" });
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = state.currentProject.replace(/\s+/g, "-") + ".zip";
+        a.click();
+
+        URL.revokeObjectURL(url);
+        notify("ZIP exported");
+    }
+
+    function importZip() {
+        DOM.zipImportInput.click();
+    }
+
+    async function handleZipImport(event) {
+        if (!window.JSZip) return notify("JSZip missing", "error");
+
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const zip = await JSZip.loadAsync(file);
+        const importedFiles = {};
+
+        for (const name of Object.keys(zip.files)) {
+            if (zip.files[name].dir) {
+                importedFiles[name] = "";
+            } else {
+                importedFiles[name] = await zip.files[name].async("string");
+            }
+        }
+
+        const projectName = file.name.replace(".zip", "");
+        state.projects[projectName] = importedFiles;
+        state.currentProject = projectName;
+        state.currentFile = importedFiles["index.html"] !== undefined ? "index.html" : Object.keys(importedFiles)[0];
+
+        saveAll();
+        refreshUI();
+        runProject();
+        notify("ZIP imported");
+    }
+
+    function exportProject() {
+        saveCurrentFile();
+
+        files()["export.json"] = JSON.stringify({
+            project: state.currentProject,
+            files: files()
+        }, null, 2);
+
+        state.currentFile = "export.json";
+        refreshUI();
+        notify("JSON exported");
+    }
+
+    function importProject() {
+        const data = prompt("Paste exported NexIDE JSON:");
+        if (!data) return;
+
+        try {
+            const imported = JSON.parse(data);
+            if (!imported.files) return notify("Invalid format", "error");
+
+            state.projects[imported.project || "Imported Project"] = imported.files;
+            state.currentProject = imported.project || "Imported Project";
+            state.currentFile = "index.html";
+
+            saveAll();
+            refreshUI();
+            runProject();
+            notify("Project imported");
+        } catch {
+            notify("Import failed", "error");
+        }
+    }
+
+    function openCommandPalette() {
+        DOM.commandPalette.classList.remove("hidden");
+        renderCommands();
+        DOM.commandInput.focus();
+    }
+
+    function closeCommandPalette() {
+        DOM.commandPalette.classList.add("hidden");
+    }
+
+    const commandMap = {
+        "Run Project": runProject,
+        "New File": newFile,
+        "New Folder": newFolder,
+        "Export JSON": exportProject,
+        "Export ZIP": exportZip,
+        "Import ZIP": importZip,
+        "Toggle VR Mode": toggleQuestMode,
+        "Toggle Theme": toggleTheme,
+        "Open Settings": openProjectSettings,
+        "Install Portfolio": () => installTemplate("portfolio"),
+        "Install Dashboard": () => installTemplate("dashboard")
+    };
+
+    function renderCommands() {
+        DOM.commandList.innerHTML = "";
+        Object.keys(commandMap).forEach(name => {
+            const item = document.createElement("div");
+            item.className = "command-item";
+            item.textContent = name;
+            item.onclick = () => {
+                commandMap[name]();
+                closeCommandPalette();
+            };
+            DOM.commandList.appendChild(item);
+        });
+    }
+
+    function openProjectSettings() {
+        DOM.settingsProjectName.value = state.currentProject;
+        DOM.settingsPreviewMode.value = state.previewMode;
+        DOM.settingsModal.classList.remove("hidden");
+    }
+
+    function closeProjectSettings() {
+        DOM.settingsModal.classList.add("hidden");
+    }
+
+    function saveProjectSettings() {
+        const newName = DOM.settingsProjectName.value.trim();
+
+        if (newName && newName !== state.currentProject && !state.projects[newName]) {
+            state.projects[newName] = files();
+            delete state.projects[state.currentProject];
+            state.currentProject = newName;
+        }
+
+        setPreviewMode(DOM.settingsPreviewMode.value);
+        saveAll();
+        refreshUI();
+        closeProjectSettings();
+        notify("Settings saved");
+    }
+
+    function handleTerminalKey(event) {
+        if (event.key !== "Enter") return;
+        const cmd = DOM.terminalInput.value.trim();
+        DOM.terminalInput.value = "";
+        runTerminalCommand(cmd);
+    }
+
+    function runTerminalCommand(cmd) {
+        terminal("> " + cmd);
+
+        const parts = cmd.split(" ");
+        const base = parts[0];
+
+        if (base === "help") terminal("Commands: help, ls, cat <file>, run, clear, projects, current");
+        else if (base === "ls") terminal(Object.keys(files()).join("\n"));
+        else if (base === "cat") terminal(files()[parts[1]] || "File not found");
+        else if (base === "run") runProject();
+        else if (base === "clear") DOM.terminalOutput.innerHTML = "Terminal cleared.";
+        else if (base === "projects") terminal(Object.keys(state.projects).join("\n"));
+        else if (base === "current") terminal(state.currentProject + " / " + state.currentFile);
+        else terminal("Unknown command. Type help.");
+    }
+
+    function setThemePack(theme) {
+        document.body.classList.remove("light", "matrix", "cyber");
+
+        if (theme !== "dark") document.body.classList.add(theme);
+
+        localStorage.setItem("nexide-theme-pack", theme);
+        notify("Theme: " + theme);
+    }
+
+    function loadThemePack() {
+        const theme = localStorage.getItem("nexide-theme-pack") || "dark";
+        setThemePack(theme);
+    }
+
+    function toggleTheme() {
+        if (document.body.classList.contains("light")) setThemePack("dark");
+        else setThemePack("light");
+    }
+
+    function toggleQuestMode() {
+        document.body.classList.toggle("quest");
+        notify("VR Mode toggled");
+    }
+
+    function toggleOverlay() {
+        DOM.overlay.classList.toggle("hidden");
+    }
+
+    function inspectDOM() {
+        const html = files()["index.html"] || "";
+        const tags = html.match(/<[^/!][^>]*>/g) || [];
+        DOM.devOutput.innerText = "DOM Tags Found:\n" + tags.join("\n");
+    }
+
+    function inspectCSS() {
+        const css = files()["style.css"] || "";
+        const rules = css.match(/{/g) || [];
+        DOM.devOutput.innerText = "CSS Rules: " + rules.length + "\n\n" + css.slice(0, 700);
+    }
+
+    function storageViewer() {
+        DOM.devOutput.innerText = "LocalStorage Keys:\n" + Object.keys(localStorage).join("\n");
+    }
+
+    function performanceStats() {
+        let total = 0;
+        Object.keys(files()).forEach(file => total += files()[file].length);
+        DOM.devOutput.innerText = `Performance Stats
+Files: ${Object.keys(files()).length}
+Total Characters: ${total}
+Estimated Load: Lightweight
+Quest Mode: ${document.body.classList.contains("quest")}`;
+    }
+
+    function networkInfo() {
+        DOM.devOutput.innerText = `Network Tab
+External Requests: Monaco CDN + JSZip CDN
+Mode: Browser Preview
+GitHub Pages: Active
+Quest Compatible: Yes`;
+    }
+
+    function errorViewer() {
+        DOM.devOutput.innerText = state.errors.length ? "Errors:\n" + state.errors.join("\n") : "No errors detected.";
+    }
+
+    function assetManager() {
+        const assets = Object.keys(files()).filter(file => file.startsWith("assets/") && !file.endsWith("/"));
+        DOM.devOutput.innerText = assets.length ? "Assets:\n" + assets.join("\n") : "No assets yet.";
+    }
+
+    function githubPanel() {
+        DOM.devOutput.innerText = `GitHub Integration
+Repo: tyl-droid/NexIDE-VR
+Pages: https://tyl-droid.github.io/NexIDE-VR/
+Status: Manual sync for now`;
+    }
+
+    function extensionInfo() {
+        DOM.devOutput.innerText =
+            "Extensions\n" +
+            Object.keys(state.extensions)
+                .map(name => `${state.extensions[name] ? "Enabled" : "Disabled"} - ${name}`)
+                .join("\n");
+    }
+
+    window.addEventListener("message", event => {
+        if (!event.data || !event.data.type) return;
+
+        if (event.data.type === "log") {
+            log("[LOG] " + event.data.message);
+        }
+
+        if (event.data.type === "warn") {
+            log("[WARN] " + event.data.message);
+            notify("Warning: " + event.data.message, "warn");
+        }
+
+        if (event.data.type === "error") {
+            state.errors.push(event.data.message);
+            log("[ERROR] " + event.data.message);
+            notify("Error: " + event.data.message, "error");
         }
     });
 
-    require(["vs/editor/editor.main"], function () {
-        monacoEditor = monaco.editor.create(document.getElementById("editor"), {
-            value: getFiles()[currentFile] || "",
-            language: detectLanguage(currentFile),
-            theme: "vs-dark",
-            automaticLayout: true,
-            minimap: { enabled: false },
-            fontSize: 15,
-            wordWrap: "on"
+    function initMonaco() {
+        require.config({
+            paths: {
+                vs: "https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.49.0/min/vs"
+            }
         });
 
-        monacoEditor.onDidChangeModelContent(() => {
-            saveCurrentFile();
-            updateStatus("Auto Saved");
+        require(["vs/editor/editor.main"], () => {
+            editor = monaco.editor.create($("editor"), {
+                value: files()[state.currentFile] || "",
+                language: detectLanguage(),
+                theme: "vs-dark",
+                automaticLayout: true,
+                minimap: { enabled: false },
+                fontSize: 15,
+                wordWrap: "on"
+            });
 
-            if (autoRun) runProject();
+            editor.onDidChangeModelContent(() => {
+                saveCurrentFile();
+                updateStatus("Auto Saved");
+                if (state.autoRun) runProject();
+            });
+
+            refreshUI();
+            runProject();
+            notify("Monaco loaded");
         });
+    }
 
-        refreshUI();
-        runProject();
-        notify("Monaco Editor loaded");
+    if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.register("./service-worker.js")
+            .then(() => notify("Offline mode ready"))
+            .catch(() => notify("Service worker failed", "warn"));
+    }
+
+    Object.assign(window, {
+        newProject,
+        newFile,
+        newFolder,
+        renameItem,
+        deleteItem,
+        duplicateFile,
+        runProject,
+        autoRunToggle,
+        projectSearch,
+        replaceText,
+        askNexAI,
+        toggleQuestMode,
+        toggleOverlay,
+        toggleTheme,
+        exportProject,
+        importProject,
+        exportZip,
+        importZip,
+        uploadAssets,
+        handleAssetUpload,
+        handleZipImport,
+        openCommandPalette,
+        closeCommandPalette,
+        openProjectSettings,
+        closeProjectSettings,
+        saveProjectSettings,
+        setPreviewMode,
+        fullscreenPreview,
+        switchProject,
+        changeLanguage,
+        installTemplate,
+        inspectDOM,
+        inspectCSS,
+        storageViewer,
+        performanceStats,
+        networkInfo,
+        errorViewer,
+        assetManager,
+        githubPanel,
+        extensionInfo,
+        clearConsole,
+        handleTerminalKey,
+        setThemePack
     });
-}
 
-if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("./service-worker.js")
-        .then(() => notify("Offline mode ready"))
-        .catch(() => notify("Service worker failed", "warn"));
-}
-
-loadAll();
-loadTheme();
-renderExtensions();
-initMonaco();
+    loadAll();
+    loadThemePack();
+    initMonaco();
+})();
