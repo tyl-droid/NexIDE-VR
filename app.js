@@ -25,12 +25,18 @@
         assetList: $("assetList"),
         zipImportInput: $("zipImportInput"),
         terminalOutput: $("terminalOutput"),
-        terminalInput: $("terminalInput")
+        terminalInput: $("terminalInput"),
+        recentModal: $("recentModal"),
+        recentList: $("recentList"),
+        snippetModal: $("snippetModal")
     };
 
-    const STORAGE_KEY = "nexide-omega-plus";
+    const STORAGE_KEY = "nexide-nexus";
+    const SNAPSHOT_KEY = "nexide-nexus-snapshots";
+    const RECENT_KEY = "nexide-nexus-recent";
 
     let editor = null;
+    let snapshotTimer = null;
 
     const state = {
         currentProject: "Default Project",
@@ -42,7 +48,7 @@
         projects: {
             "Default Project": {
                 "index.html": `<h1>Hello Quest 3</h1>
-<p>NexIDE VR Omega+ works!</p>
+<p>NexIDE VR Nexus works!</p>
 <button onclick="console.log('Button clicked')">Click Me</button>`,
                 "style.css": `body {
     font-family: Arial;
@@ -51,12 +57,12 @@
     padding: 30px;
 }`,
                 "app.js": `console.log("Preview app loaded");`,
-                "README.md": `# NexIDE VR Omega+
+                "README.md": `# NexIDE VR Nexus
 
-A Quest-friendly browser IDE.`,
+Quest-friendly browser IDE with Monaco, recovery, snippets, ZIP export, assets, terminal, and templates.`,
                 "config.json": `{
   "name": "NexIDE VR",
-  "version": "Omega+"
+  "version": "Nexus"
 }`,
                 "assets/": "",
                 "scripts/": ""
@@ -74,6 +80,9 @@ A Quest-friendly browser IDE.`,
             "Quest UI Pack": true,
             "Theme Marketplace": true,
             "Terminal UI": true,
+            "Crash Recovery": true,
+            "Snippet Manager": true,
+            "Recent Projects": true,
             "GitHub Panel": true,
             "Python Preview": false,
             "Java Preview": false,
@@ -121,8 +130,7 @@ A Quest-friendly browser IDE.`,
         if (!saved) return;
 
         try {
-            const data = JSON.parse(saved);
-            Object.assign(state, data);
+            Object.assign(state, JSON.parse(saved));
         } catch {
             notify("Save data failed to load", "warn");
         }
@@ -131,6 +139,172 @@ A Quest-friendly browser IDE.`,
     function saveCurrentFile() {
         files()[state.currentFile] = getValue();
         saveAll();
+    }
+
+    function createAutoSnapshot() {
+        if (!state.extensions["Crash Recovery"]) return;
+
+        const snapshots = loadSnapshots();
+        snapshots.unshift({
+            name: "Auto Snapshot",
+            time: new Date().toISOString(),
+            project: state.currentProject,
+            file: state.currentFile,
+            data: JSON.parse(JSON.stringify(state.projects))
+        });
+
+        localStorage.setItem(SNAPSHOT_KEY, JSON.stringify(snapshots.slice(0, 10)));
+    }
+
+    function createSnapshot() {
+        saveCurrentFile();
+
+        const snapshots = loadSnapshots();
+        snapshots.unshift({
+            name: prompt("Snapshot name:", "Manual Snapshot") || "Manual Snapshot",
+            time: new Date().toISOString(),
+            project: state.currentProject,
+            file: state.currentFile,
+            data: JSON.parse(JSON.stringify(state.projects))
+        });
+
+        localStorage.setItem(SNAPSHOT_KEY, JSON.stringify(snapshots.slice(0, 20)));
+        notify("Snapshot created");
+    }
+
+    function loadSnapshots() {
+        try {
+            return JSON.parse(localStorage.getItem(SNAPSHOT_KEY)) || [];
+        } catch {
+            return [];
+        }
+    }
+
+    function restoreSnapshot() {
+        const snapshots = loadSnapshots();
+
+        if (!snapshots.length) {
+            notify("No snapshots found", "warn");
+            return;
+        }
+
+        const list = snapshots.map((s, i) => `${i}: ${s.name} — ${s.time}`).join("\n");
+        const choice = prompt("Restore snapshot number:\n" + list, "0");
+
+        if (choice === null) return;
+
+        const snapshot = snapshots[Number(choice)];
+
+        if (!snapshot) {
+            notify("Invalid snapshot", "error");
+            return;
+        }
+
+        state.projects = snapshot.data;
+        state.currentProject = snapshot.project;
+        state.currentFile = snapshot.file;
+
+        saveAll();
+        refreshUI();
+        runProject();
+
+        notify("Snapshot restored");
+    }
+
+    function snapshotViewer() {
+        const snapshots = loadSnapshots();
+
+        DOM.devOutput.innerText = snapshots.length
+            ? snapshots.map((s, i) => `${i}: ${s.name}\n${s.time}\nProject: ${s.project}\n`).join("\n")
+            : "No snapshots found.";
+    }
+
+    function addRecentProject(name) {
+        let recent = [];
+
+        try {
+            recent = JSON.parse(localStorage.getItem(RECENT_KEY)) || [];
+        } catch {
+            recent = [];
+        }
+
+        recent = recent.filter(item => item !== name);
+        recent.unshift(name);
+
+        localStorage.setItem(RECENT_KEY, JSON.stringify(recent.slice(0, 10)));
+    }
+
+    function openRecentProjects() {
+        DOM.recentList.innerHTML = "";
+
+        let recent = [];
+
+        try {
+            recent = JSON.parse(localStorage.getItem(RECENT_KEY)) || [];
+        } catch {
+            recent = [];
+        }
+
+        if (!recent.length) {
+            DOM.recentList.innerHTML = "<div class='recent-item'>No recent projects.</div>";
+        }
+
+        recent.forEach(name => {
+            const item = document.createElement("div");
+            item.className = "recent-item";
+            item.textContent = name;
+            item.onclick = () => {
+                if (state.projects[name]) switchProject(name);
+                closeRecentProjects();
+            };
+            DOM.recentList.appendChild(item);
+        });
+
+        DOM.recentModal.classList.remove("hidden");
+    }
+
+    function closeRecentProjects() {
+        DOM.recentModal.classList.add("hidden");
+    }
+
+    function openSnippetManager() {
+        DOM.snippetModal.classList.remove("hidden");
+    }
+
+    function closeSnippetManager() {
+        DOM.snippetModal.classList.add("hidden");
+    }
+
+    function insertSavedSnippet(type) {
+        const snippets = {
+            "html-card": `<div class="card">
+    <h2>Card Title</h2>
+    <p>Card content here.</p>
+</div>`,
+            "js-click": `document.querySelector("button").addEventListener("click", () => {
+    console.log("Clicked");
+});`,
+            "css-button": `button {
+    background: #22f0d0;
+    color: #050512;
+    border: none;
+    padding: 12px 18px;
+    border-radius: 8px;
+}`,
+            "html-navbar": `<nav>
+    <strong>NexIDE</strong>
+    <a href="#">Home</a>
+    <a href="#">Projects</a>
+</nav>`,
+            "js-function": `function myFunction() {
+    console.log("Function running");
+}`
+        };
+
+        setValue(getValue() + "\n" + snippets[type]);
+        saveCurrentFile();
+        closeSnippetManager();
+        notify("Snippet inserted");
     }
 
     function detectLanguage(name = state.currentFile) {
@@ -157,6 +331,7 @@ A Quest-friendly browser IDE.`,
 
     function updateStatus(text = "Ready") {
         const value = getValue();
+
         $("statusProject").innerText = "Project: " + state.currentProject;
         $("statusFile").innerText = "File: " + state.currentFile;
         $("statusLanguage").innerText = "Language: " + detectLanguage();
@@ -164,11 +339,13 @@ A Quest-friendly browser IDE.`,
         $("statusChars").innerText = "Characters: " + value.length;
         $("statusMode").innerText = "Mode: " + state.previewMode;
         $("statusSaved").innerText = text;
+
         DOM.overlayStatus.textContent = `${state.currentProject} | ${state.currentFile} | ${text}`;
     }
 
     function renderProjects() {
         DOM.projectSelect.innerHTML = "";
+
         Object.keys(state.projects).forEach(name => {
             const option = document.createElement("option");
             option.value = name;
@@ -180,6 +357,7 @@ A Quest-friendly browser IDE.`,
 
     function renderTree() {
         DOM.fileTree.innerHTML = "";
+
         Object.keys(files()).forEach(name => {
             const item = document.createElement("div");
             item.className = "tree-item";
@@ -198,6 +376,7 @@ A Quest-friendly browser IDE.`,
 
     function renderTabs() {
         DOM.tabs.innerHTML = "";
+
         Object.keys(files()).forEach(name => {
             if (name.endsWith("/")) return;
 
@@ -214,17 +393,20 @@ A Quest-friendly browser IDE.`,
 
     function renderExtensions() {
         DOM.extensionsPanel.innerHTML = "";
+
         Object.keys(state.extensions).forEach(name => {
             const card = document.createElement("div");
             card.className = "extension-card";
             if (state.extensions[name]) card.classList.add("active");
             card.textContent = `${state.extensions[name] ? "✓" : "○"} ${name}`;
+
             card.onclick = () => {
                 state.extensions[name] = !state.extensions[name];
                 saveAll();
                 renderExtensions();
                 notify(`${name}: ${state.extensions[name] ? "Enabled" : "Disabled"}`);
             };
+
             DOM.extensionsPanel.appendChild(card);
         });
     }
@@ -237,12 +419,12 @@ A Quest-friendly browser IDE.`,
             .forEach(name => {
                 const item = document.createElement("div");
                 item.className = "asset-item";
+                item.textContent = name;
 
                 if (/\.(png|jpg|jpeg|gif|svg|webp)$/i.test(name)) item.classList.add("image");
                 if (/\.(mp3|wav|ogg)$/i.test(name)) item.classList.add("audio");
                 if (/\.(mp4|webm)$/i.test(name)) item.classList.add("video");
 
-                item.textContent = name;
                 item.onclick = () => loadFile(name);
                 DOM.assetList.appendChild(item);
             });
@@ -273,22 +455,26 @@ A Quest-friendly browser IDE.`,
     function switchProject(name) {
         saveCurrentFile();
         state.currentProject = name;
+
         const projectFiles = files();
+
         state.currentFile = projectFiles["index.html"] !== undefined
             ? "index.html"
             : Object.keys(projectFiles).find(f => !f.endsWith("/"));
+
+        addRecentProject(name);
         refreshUI();
         runProject();
-        notify("Switched to " + name);
+        notify("Switched project");
     }
 
     function newProject() {
         const name = prompt("Project name:", "New Project");
         if (!name) return;
-        if (state.projects[name]) return notify("Project already exists", "error");
+        if (state.projects[name]) return notify("Project exists", "error");
 
         state.projects[name] = {
-            "index.html": `<h1>${name}</h1><p>New Omega+ project ready.</p>`,
+            "index.html": `<h1>${name}</h1><p>New Nexus project ready.</p>`,
             "style.css": `body { font-family: Arial; background:#050512; color:white; padding:30px; }`,
             "app.js": `console.log("${name} loaded");`,
             "README.md": `# ${name}`,
@@ -298,9 +484,12 @@ A Quest-friendly browser IDE.`,
 
         state.currentProject = name;
         state.currentFile = "index.html";
+        addRecentProject(name);
+
         saveAll();
         refreshUI();
         runProject();
+
         notify("Project created");
     }
 
@@ -311,8 +500,10 @@ A Quest-friendly browser IDE.`,
 
         files()[name] = "";
         state.currentFile = name;
+
         saveAll();
         refreshUI();
+
         notify("File created");
     }
 
@@ -326,6 +517,7 @@ A Quest-friendly browser IDE.`,
         files()[folder] = "";
         saveAll();
         refreshUI();
+
         notify("Folder created");
     }
 
@@ -335,10 +527,14 @@ A Quest-friendly browser IDE.`,
 
         files()[newName] = files()[state.currentFile];
         delete files()[state.currentFile];
-        state.currentFile = newName.endsWith("/") ? Object.keys(files()).find(f => !f.endsWith("/")) : newName;
+
+        state.currentFile = newName.endsWith("/")
+            ? Object.keys(files()).find(f => !f.endsWith("/"))
+            : newName;
 
         saveAll();
         refreshUI();
+
         notify("Renamed");
     }
 
@@ -347,11 +543,13 @@ A Quest-friendly browser IDE.`,
         if (!confirm("Delete " + state.currentFile + "?")) return;
 
         delete files()[state.currentFile];
+
         state.currentFile = Object.keys(files()).find(f => !f.endsWith("/"));
 
         saveAll();
         refreshUI();
         runProject();
+
         notify("Deleted");
     }
 
@@ -359,6 +557,7 @@ A Quest-friendly browser IDE.`,
         if (state.currentFile.endsWith("/")) return;
 
         const copyName = state.currentFile.replace(".", "-copy.");
+
         if (files()[copyName]) return notify("Copy exists", "error");
 
         files()[copyName] = files()[state.currentFile];
@@ -366,6 +565,7 @@ A Quest-friendly browser IDE.`,
 
         saveAll();
         refreshUI();
+
         notify("Duplicated");
     }
 
@@ -382,6 +582,7 @@ A Quest-friendly browser IDE.`,
 
         if (state.currentFile.endsWith(".md")) return runMarkdown(f[state.currentFile]);
         if (state.currentFile.endsWith(".json")) return runJSON(f[state.currentFile]);
+
         if (/\.(py|java|cs|cpp|cxx|cc)$/i.test(state.currentFile)) {
             return runPreviewOnly(detectLanguage(), f[state.currentFile]);
         }
@@ -487,13 +688,16 @@ ${js}
 
     function setPreviewMode(mode, announce = true) {
         state.previewMode = mode;
+
         DOM.preview.classList.remove("mobile", "quest");
 
         if (mode === "mobile") DOM.preview.classList.add("mobile");
         if (mode === "quest") DOM.preview.classList.add("quest");
 
         $("statusMode").innerText = "Mode: " + mode;
+
         if (announce) notify("Preview mode: " + mode);
+
         saveAll();
     }
 
@@ -513,12 +717,23 @@ ${js}
         const query = prompt("Search project:");
         if (!query) return;
 
-        const results = Object.keys(files()).filter(name =>
-            !name.endsWith("/") && files()[name].includes(query)
-        );
+        const results = [];
 
-        log(results.length ? "[SEARCH] " + results.join(", ") : "[SEARCH] No results");
-        notify(results.length ? "Found results" : "No results", results.length ? "info" : "warn");
+        Object.keys(files()).forEach(file => {
+            if (file.endsWith("/")) return;
+
+            files()[file].split("\n").forEach((line, i) => {
+                if (line.includes(query)) {
+                    results.push(`${file}:${i + 1} — ${line.trim()}`);
+                }
+            });
+        });
+
+        DOM.devOutput.innerText = results.length
+            ? "Search Results:\n\n" + results.join("\n")
+            : "No results.";
+
+        notify(results.length ? "Search complete" : "No results", results.length ? "info" : "warn");
     }
 
     function replaceText() {
@@ -531,6 +746,7 @@ ${js}
         setValue(getValue().split(find).join(replace));
         saveCurrentFile();
         updateStatus("Replaced");
+
         notify("Replaced text");
     }
 
@@ -551,9 +767,18 @@ ${js}
                 css: `body{font-family:Arial;background:#050512;color:white;padding:30px}`,
                 js: `function addTask(){const li=document.createElement("li");li.textContent=document.getElementById("task").value;document.getElementById("list").appendChild(li);console.log("Task added");}`
             },
-            markdown: { file: "README.md", code: `# NexIDE VR\n\n- Markdown preview\n- Quest ready` },
-            json: { file: "config.json", code: `{\n  "project": "NexIDE VR",\n  "quest": true\n}` },
-            python: { file: "main.py", code: `print("Hello from NexIDE VR")` }
+            markdown: {
+                file: "README.md",
+                code: `# NexIDE VR\n\n- Markdown preview\n- Quest ready`
+            },
+            json: {
+                file: "config.json",
+                code: `{\n  "project": "NexIDE VR",\n  "quest": true\n}`
+            },
+            python: {
+                file: "main.py",
+                code: `print("Hello from NexIDE VR")`
+            }
         };
 
         const t = templates[type];
@@ -572,6 +797,7 @@ ${js}
         saveAll();
         refreshUI();
         runProject();
+
         notify("Template installed");
     }
 
@@ -596,7 +822,7 @@ ${js}
         if (q.includes("python")) return installTemplate("python");
 
         if (q.includes("explain")) {
-            log("[NEXAI] HTML/CSS/JS run in-browser. Python/Java/C#/C++ need a backend later.");
+            log("[NEXAI] HTML/CSS/JS run in-browser. Python/Java/C#/C++ need a backend runtime later.");
             return notify("Explanation in console");
         }
 
@@ -614,6 +840,7 @@ ${js}
 
     async function handleAssetUpload(event) {
         const uploaded = Array.from(event.target.files || []);
+
         for (const file of uploaded) {
             const dataUrl = await readFileAsDataURL(file);
             files()["assets/" + file.name] = dataUrl;
@@ -621,6 +848,7 @@ ${js}
 
         saveAll();
         refreshUI();
+
         notify("Assets uploaded");
     }
 
@@ -638,6 +866,7 @@ ${js}
         saveCurrentFile();
 
         const zip = new JSZip();
+
         Object.keys(files()).forEach(name => {
             if (!name.endsWith("/")) zip.file(name, files()[name]);
         });
@@ -651,6 +880,7 @@ ${js}
         a.click();
 
         URL.revokeObjectURL(url);
+
         notify("ZIP exported");
     }
 
@@ -676,13 +906,17 @@ ${js}
         }
 
         const projectName = file.name.replace(".zip", "");
+
         state.projects[projectName] = importedFiles;
         state.currentProject = projectName;
-        state.currentFile = importedFiles["index.html"] !== undefined ? "index.html" : Object.keys(importedFiles)[0];
+        state.currentFile = importedFiles["index.html"] !== undefined
+            ? "index.html"
+            : Object.keys(importedFiles)[0];
 
         saveAll();
         refreshUI();
         runProject();
+
         notify("ZIP imported");
     }
 
@@ -696,6 +930,7 @@ ${js}
 
         state.currentFile = "export.json";
         refreshUI();
+
         notify("JSON exported");
     }
 
@@ -714,26 +949,21 @@ ${js}
             saveAll();
             refreshUI();
             runProject();
+
             notify("Project imported");
         } catch {
             notify("Import failed", "error");
         }
     }
 
-    function openCommandPalette() {
-        DOM.commandPalette.classList.remove("hidden");
-        renderCommands();
-        DOM.commandInput.focus();
-    }
-
-    function closeCommandPalette() {
-        DOM.commandPalette.classList.add("hidden");
-    }
-
     const commandMap = {
         "Run Project": runProject,
         "New File": newFile,
         "New Folder": newFolder,
+        "Snapshot": createSnapshot,
+        "Restore Snapshot": restoreSnapshot,
+        "Recent Projects": openRecentProjects,
+        "Snippets": openSnippetManager,
         "Export JSON": exportProject,
         "Export ZIP": exportZip,
         "Import ZIP": importZip,
@@ -744,18 +974,32 @@ ${js}
         "Install Dashboard": () => installTemplate("dashboard")
     };
 
-    function renderCommands() {
+    function openCommandPalette() {
+        DOM.commandPalette.classList.remove("hidden");
+        renderCommands("");
+        DOM.commandInput.value = "";
+        DOM.commandInput.focus();
+    }
+
+    function closeCommandPalette() {
+        DOM.commandPalette.classList.add("hidden");
+    }
+
+    function renderCommands(filter = "") {
         DOM.commandList.innerHTML = "";
-        Object.keys(commandMap).forEach(name => {
-            const item = document.createElement("div");
-            item.className = "command-item";
-            item.textContent = name;
-            item.onclick = () => {
-                commandMap[name]();
-                closeCommandPalette();
-            };
-            DOM.commandList.appendChild(item);
-        });
+
+        Object.keys(commandMap)
+            .filter(name => name.toLowerCase().includes(filter.toLowerCase()))
+            .forEach(name => {
+                const item = document.createElement("div");
+                item.className = "command-item";
+                item.textContent = name;
+                item.onclick = () => {
+                    commandMap[name]();
+                    closeCommandPalette();
+                };
+                DOM.commandList.appendChild(item);
+            });
     }
 
     function openProjectSettings() {
@@ -781,13 +1025,16 @@ ${js}
         saveAll();
         refreshUI();
         closeProjectSettings();
+
         notify("Settings saved");
     }
 
     function handleTerminalKey(event) {
         if (event.key !== "Enter") return;
+
         const cmd = DOM.terminalInput.value.trim();
         DOM.terminalInput.value = "";
+
         runTerminalCommand(cmd);
     }
 
@@ -797,13 +1044,15 @@ ${js}
         const parts = cmd.split(" ");
         const base = parts[0];
 
-        if (base === "help") terminal("Commands: help, ls, cat <file>, run, clear, projects, current");
+        if (base === "help") terminal("Commands: help, ls, cat <file>, run, clear, projects, current, snapshot, restore");
         else if (base === "ls") terminal(Object.keys(files()).join("\n"));
         else if (base === "cat") terminal(files()[parts[1]] || "File not found");
         else if (base === "run") runProject();
         else if (base === "clear") DOM.terminalOutput.innerHTML = "Terminal cleared.";
         else if (base === "projects") terminal(Object.keys(state.projects).join("\n"));
         else if (base === "current") terminal(state.currentProject + " / " + state.currentFile);
+        else if (base === "snapshot") createSnapshot();
+        else if (base === "restore") restoreSnapshot();
         else terminal("Unknown command. Type help.");
     }
 
@@ -817,13 +1066,13 @@ ${js}
     }
 
     function loadThemePack() {
-        const theme = localStorage.getItem("nexide-theme-pack") || "dark";
-        setThemePack(theme);
+        setThemePack(localStorage.getItem("nexide-theme-pack") || "dark");
     }
 
     function toggleTheme() {
-        if (document.body.classList.contains("light")) setThemePack("dark");
-        else setThemePack("light");
+        document.body.classList.contains("light")
+            ? setThemePack("dark")
+            : setThemePack("light");
     }
 
     function toggleQuestMode() {
@@ -853,7 +1102,11 @@ ${js}
 
     function performanceStats() {
         let total = 0;
-        Object.keys(files()).forEach(file => total += files()[file].length);
+
+        Object.keys(files()).forEach(file => {
+            total += files()[file].length;
+        });
+
         DOM.devOutput.innerText = `Performance Stats
 Files: ${Object.keys(files()).length}
 Total Characters: ${total}
@@ -870,7 +1123,9 @@ Quest Compatible: Yes`;
     }
 
     function errorViewer() {
-        DOM.devOutput.innerText = state.errors.length ? "Errors:\n" + state.errors.join("\n") : "No errors detected.";
+        DOM.devOutput.innerText = state.errors.length
+            ? "Errors:\n" + state.errors.join("\n")
+            : "No errors detected.";
     }
 
     function assetManager() {
@@ -933,6 +1188,7 @@ Status: Manual sync for now`;
             editor.onDidChangeModelContent(() => {
                 saveCurrentFile();
                 updateStatus("Auto Saved");
+
                 if (state.autoRun) runProject();
             });
 
@@ -941,6 +1197,8 @@ Status: Manual sync for now`;
             notify("Monaco loaded");
         });
     }
+
+    DOM.commandInput.addEventListener("input", () => renderCommands(DOM.commandInput.value));
 
     if ("serviceWorker" in navigator) {
         navigator.serviceWorker.register("./service-worker.js")
@@ -960,6 +1218,14 @@ Status: Manual sync for now`;
         projectSearch,
         replaceText,
         askNexAI,
+        createSnapshot,
+        restoreSnapshot,
+        snapshotViewer,
+        openRecentProjects,
+        closeRecentProjects,
+        openSnippetManager,
+        closeSnippetManager,
+        insertSavedSnippet,
         toggleQuestMode,
         toggleOverlay,
         toggleTheme,
@@ -996,5 +1262,8 @@ Status: Manual sync for now`;
 
     loadAll();
     loadThemePack();
+    addRecentProject(state.currentProject);
     initMonaco();
+
+    snapshotTimer = setInterval(createAutoSnapshot, 5000);
 })();

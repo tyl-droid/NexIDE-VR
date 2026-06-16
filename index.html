@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>NexIDE VR Omega+</title>
+    <title>NexIDE VR Nexus</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <link rel="manifest" href="manifest.json">
@@ -10,17 +10,18 @@
     <link rel="stylesheet" href="style.css">
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.49.0/min/vs/loader.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 </head>
 <body>
 
 <div id="overlay">
-    <div id="overlayTitle">NexIDE VR Omega+</div>
+    <div id="overlayTitle">NexIDE VR Nexus</div>
     <div id="overlayStatus">Ready</div>
 </div>
 
 <div id="notifications"></div>
 
-<h1>NexIDE VR Omega+</h1>
+<h1>NexIDE VR Nexus</h1>
 
 <div class="toolbar">
     <button onclick="openCommandPalette()">Commands</button>
@@ -35,6 +36,10 @@
     <button onclick="projectSearch()">Project Search</button>
     <button onclick="replaceText()">Replace</button>
     <button onclick="askNexAI()">AI Builder</button>
+    <button onclick="createSnapshot()">Snapshot</button>
+    <button onclick="restoreSnapshot()">Restore</button>
+    <button onclick="openRecentProjects()">Recent</button>
+    <button onclick="openSnippetManager()">Snippets</button>
     <button onclick="toggleQuestMode()">VR Mode</button>
     <button onclick="toggleOverlay()">Overlay</button>
     <button onclick="toggleTheme()">Theme</button>
@@ -61,16 +66,39 @@
 <div id="settingsModal" class="modal hidden">
     <div class="modalBox">
         <h2>Project Settings</h2>
+
         <label>Project Name</label>
         <input id="settingsProjectName">
+
         <label>Default Preview Mode</label>
         <select id="settingsPreviewMode">
             <option value="desktop">Desktop</option>
             <option value="mobile">Mobile</option>
             <option value="quest">Quest</option>
         </select>
+
         <button onclick="saveProjectSettings()">Save Settings</button>
         <button onclick="closeProjectSettings()">Close</button>
+    </div>
+</div>
+
+<div id="recentModal" class="modal hidden">
+    <div class="modalBox">
+        <h2>Recent Projects</h2>
+        <div id="recentList"></div>
+        <button onclick="closeRecentProjects()">Close</button>
+    </div>
+</div>
+
+<div id="snippetModal" class="modal hidden">
+    <div class="modalBox">
+        <h2>Snippet Manager</h2>
+        <button onclick="insertSavedSnippet('html-card')">HTML Card</button>
+        <button onclick="insertSavedSnippet('js-click')">JS Click Event</button>
+        <button onclick="insertSavedSnippet('css-button')">CSS Button</button>
+        <button onclick="insertSavedSnippet('html-navbar')">Navbar</button>
+        <button onclick="insertSavedSnippet('js-function')">JS Function</button>
+        <button onclick="closeSnippetManager()">Close</button>
     </div>
 </div>
 
@@ -157,6 +185,7 @@
         <button onclick="assetManager()">Assets</button>
         <button onclick="githubPanel()">GitHub</button>
         <button onclick="extensionInfo()">Extensions</button>
+        <button onclick="snapshotViewer()">Snapshots</button>
 
         <div id="devOutput">Dev tools ready.</div>
     </aside>
@@ -173,7 +202,6 @@
     <span id="statusSaved">Ready</span>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
