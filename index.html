@@ -14,6 +14,9 @@
 </head>
 <body>
 
+<!-- =========================
+     SYSTEM OVERLAY
+========================= -->
 <div id="overlay">
     <div id="overlayTitle">NexIDE VR Nexus</div>
     <div id="overlayStatus">Ready</div>
@@ -21,9 +24,18 @@
 
 <div id="notifications"></div>
 
-<h1>NexIDE VR Nexus</h1>
+<!-- =========================
+     APP HEADER
+========================= -->
+<header class="app-header">
+    <h1>NexIDE VR Nexus</h1>
+    <p>Quest-ready browser IDE with Monaco, projects, extensions, deployment helpers, and recovery.</p>
+</header>
 
-<div class="toolbar">
+<!-- =========================
+     MAIN TOOLBAR
+========================= -->
+<nav class="toolbar">
     <button onclick="openCommandPalette()">Commands</button>
     <button onclick="newProject()">New Project</button>
     <button onclick="newFile()">+ File</button>
@@ -31,29 +43,42 @@
     <button onclick="renameItem()">Rename</button>
     <button onclick="deleteItem()">Delete</button>
     <button onclick="duplicateFile()">Duplicate</button>
+
     <button onclick="runProject()">Run</button>
     <button onclick="autoRunToggle()">Auto Run</button>
     <button onclick="projectSearch()">Project Search</button>
     <button onclick="replaceText()">Replace</button>
+
     <button onclick="askNexAI()">AI Builder</button>
     <button onclick="createSnapshot()">Snapshot</button>
     <button onclick="restoreSnapshot()">Restore</button>
     <button onclick="openRecentProjects()">Recent</button>
     <button onclick="openSnippetManager()">Snippets</button>
+
     <button onclick="toggleQuestMode()">VR Mode</button>
     <button onclick="toggleOverlay()">Overlay</button>
     <button onclick="toggleTheme()">Theme</button>
+
     <button onclick="openProjectSettings()">Settings</button>
+    <button onclick="openDeployPanel()">Deploy</button>
+    <button onclick="openReleaseManager()">Release</button>
+
     <button onclick="exportProject()">Export JSON</button>
     <button onclick="importProject()">Import JSON</button>
     <button onclick="exportZip()">Export ZIP</button>
     <button onclick="importZip()">Import ZIP</button>
     <button onclick="clearConsole()">Clear Console</button>
-</div>
+</nav>
 
+<!-- =========================
+     HIDDEN INPUTS
+========================= -->
 <input id="assetUpload" type="file" multiple hidden onchange="handleAssetUpload(event)">
 <input id="zipImportInput" type="file" accept=".zip" hidden onchange="handleZipImport(event)">
 
+<!-- =========================
+     COMMAND PALETTE
+========================= -->
 <div id="commandPalette" class="modal hidden">
     <div class="modalBox">
         <h2>Command Palette</h2>
@@ -63,6 +88,9 @@
     </div>
 </div>
 
+<!-- =========================
+     PROJECT SETTINGS
+========================= -->
 <div id="settingsModal" class="modal hidden">
     <div class="modalBox">
         <h2>Project Settings</h2>
@@ -82,6 +110,9 @@
     </div>
 </div>
 
+<!-- =========================
+     RECENT PROJECTS
+========================= -->
 <div id="recentModal" class="modal hidden">
     <div class="modalBox">
         <h2>Recent Projects</h2>
@@ -90,6 +121,9 @@
     </div>
 </div>
 
+<!-- =========================
+     SNIPPET MANAGER
+========================= -->
 <div id="snippetModal" class="modal hidden">
     <div class="modalBox">
         <h2>Snippet Manager</h2>
@@ -102,52 +136,134 @@
     </div>
 </div>
 
+<!-- =========================
+     DEPLOY PANEL
+========================= -->
+<div id="deployModal" class="modal hidden">
+    <div class="modalBox largeModal">
+        <h2>GitHub Deploy Panel</h2>
+
+        <label>GitHub Owner</label>
+        <input id="deployOwner" placeholder="tyl-droid">
+
+        <label>Repository Name</label>
+        <input id="deployRepo" placeholder="NexIDE-VR">
+
+        <label>Branch</label>
+        <input id="deployBranch" placeholder="main">
+
+        <label>Commit Message</label>
+        <input id="deployCommitMessage" placeholder="Update NexIDE VR">
+
+        <button onclick="generateDeployCommands()">Generate Commands</button>
+        <button onclick="copyDeployCommands()">Copy Commands</button>
+        <button onclick="generatePagesURL()">Generate Pages URL</button>
+        <button onclick="saveDeploySettings()">Save Deploy Settings</button>
+
+        <h3>Deployment Checklist</h3>
+        <div id="deployChecklist"></div>
+
+        <h3>Generated Commands</h3>
+        <pre id="deployCommands">Commands will appear here.</pre>
+
+        <h3>Pages URL</h3>
+        <pre id="deployPagesURL">Pages URL will appear here.</pre>
+
+        <button onclick="closeDeployPanel()">Close</button>
+    </div>
+</div>
+
+<!-- =========================
+     RELEASE MANAGER
+========================= -->
+<div id="releaseModal" class="modal hidden">
+    <div class="modalBox largeModal">
+        <h2>Release Manager</h2>
+
+        <label>Version</label>
+        <input id="releaseVersion" placeholder="v1.0.0">
+
+        <label>Release Title</label>
+        <input id="releaseTitle" placeholder="NexIDE VR Nexus Release">
+
+        <label>Highlights</label>
+        <textarea id="releaseHighlights" placeholder="Write release highlights here..."></textarea>
+
+        <button onclick="generateReleaseNotes()">Generate Release Notes</button>
+        <button onclick="copyReleaseNotes()">Copy Release Notes</button>
+
+        <h3>Release Notes</h3>
+        <pre id="releaseOutput">Release notes will appear here.</pre>
+
+        <button onclick="closeReleaseManager()">Close</button>
+    </div>
+</div>
+
+<!-- =========================
+     APP WORKSPACE
+========================= -->
 <div class="workspace">
 
+    <!-- LEFT SIDEBAR -->
     <aside class="sidebar">
-        <h2>Projects</h2>
-        <select id="projectSelect" onchange="switchProject(this.value)"></select>
+        <section class="panel-block">
+            <h2>Projects</h2>
+            <select id="projectSelect" onchange="switchProject(this.value)"></select>
+        </section>
 
-        <h2>Explorer</h2>
-        <div id="fileTree"></div>
+        <section class="panel-block">
+            <h2>Explorer</h2>
+            <div id="fileTree"></div>
+        </section>
 
-        <h2>Language</h2>
-        <select id="languageSelect" onchange="changeLanguage(this.value)">
-            <option value="auto">Auto Detect</option>
-            <option value="html">HTML</option>
-            <option value="css">CSS</option>
-            <option value="javascript">JavaScript</option>
-            <option value="json">JSON</option>
-            <option value="markdown">Markdown</option>
-            <option value="plaintext">Plain Text</option>
-            <option value="python">Python Preview</option>
-            <option value="java">Java Preview</option>
-            <option value="csharp">C# Preview</option>
-            <option value="cpp">C++ Preview</option>
-        </select>
+        <section class="panel-block">
+            <h2>Language</h2>
+            <select id="languageSelect" onchange="changeLanguage(this.value)">
+                <option value="auto">Auto Detect</option>
+                <option value="html">HTML</option>
+                <option value="css">CSS</option>
+                <option value="javascript">JavaScript</option>
+                <option value="json">JSON</option>
+                <option value="markdown">Markdown</option>
+                <option value="plaintext">Plain Text</option>
+                <option value="python">Python Preview</option>
+                <option value="java">Java Preview</option>
+                <option value="csharp">C# Preview</option>
+                <option value="cpp">C++ Preview</option>
+            </select>
+        </section>
 
-        <h2>Assets</h2>
-        <button onclick="uploadAssets()">Upload Assets</button>
-        <div id="assetList"></div>
+        <section class="panel-block">
+            <h2>Assets</h2>
+            <button onclick="uploadAssets()">Upload Assets</button>
+            <div id="assetList"></div>
+        </section>
 
-        <h2>Extensions</h2>
-        <div id="extensionsPanel"></div>
+        <section class="panel-block">
+            <h2>Extensions</h2>
+            <div id="extensionsPanel"></div>
+        </section>
 
-        <h2>Themes</h2>
-        <button onclick="setThemePack('dark')">Dark</button>
-        <button onclick="setThemePack('light')">Light</button>
-        <button onclick="setThemePack('matrix')">Matrix</button>
-        <button onclick="setThemePack('cyber')">Cyber</button>
+        <section class="panel-block">
+            <h2>Themes</h2>
+            <button onclick="setThemePack('dark')">Dark</button>
+            <button onclick="setThemePack('light')">Light</button>
+            <button onclick="setThemePack('matrix')">Matrix</button>
+            <button onclick="setThemePack('cyber')">Cyber</button>
+        </section>
 
-        <h2>Templates</h2>
-        <button onclick="installTemplate('portfolio')">Portfolio</button>
-        <button onclick="installTemplate('dashboard')">Dashboard</button>
-        <button onclick="installTemplate('todo')">Todo App</button>
-        <button onclick="installTemplate('markdown')">Markdown Doc</button>
-        <button onclick="installTemplate('json')">JSON Config</button>
-        <button onclick="installTemplate('python')">Python File</button>
+        <section class="panel-block">
+            <h2>Templates</h2>
+            <button onclick="installTemplate('portfolio')">Portfolio</button>
+            <button onclick="installTemplate('dashboard')">Dashboard</button>
+            <button onclick="installTemplate('todo')">Todo App</button>
+            <button onclick="installTemplate('markdown')">Markdown Doc</button>
+            <button onclick="installTemplate('json')">JSON Config</button>
+            <button onclick="installTemplate('python')">Python File</button>
+        </section>
     </aside>
 
+    <!-- CENTER MAIN -->
     <main class="main">
         <div id="tabs"></div>
 
@@ -174,8 +290,10 @@
         <div id="consoleBox">[SYSTEM] Console ready...</div>
     </main>
 
+    <!-- RIGHT DEVTOOLS -->
     <aside class="devtools">
         <h2>Dev Tools</h2>
+
         <button onclick="inspectDOM()">DOM Tree</button>
         <button onclick="inspectCSS()">CSS Inspector</button>
         <button onclick="storageViewer()">Storage</button>
@@ -186,13 +304,18 @@
         <button onclick="githubPanel()">GitHub</button>
         <button onclick="extensionInfo()">Extensions</button>
         <button onclick="snapshotViewer()">Snapshots</button>
+        <button onclick="deployInfo()">Deploy Info</button>
+        <button onclick="releaseInfo()">Release Info</button>
 
         <div id="devOutput">Dev tools ready.</div>
     </aside>
 
 </div>
 
-<div class="statusbar">
+<!-- =========================
+     STATUS BAR
+========================= -->
+<footer class="statusbar">
     <span id="statusProject">Project: Default</span>
     <span id="statusFile">File: index.html</span>
     <span id="statusLanguage">Language: auto</span>
@@ -200,7 +323,7 @@
     <span id="statusChars">Characters: 0</span>
     <span id="statusMode">Mode: Desktop</span>
     <span id="statusSaved">Ready</span>
-</div>
+</footer>
 
 <script src="app.js"></script>
 </body>
